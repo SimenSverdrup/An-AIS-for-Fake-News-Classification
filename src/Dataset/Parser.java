@@ -35,7 +35,7 @@ public class Parser {
 
     public static List<List<String>> parseCSVtoList(String path, char separator) throws FileNotFoundException {
         // Parse raw CSV file to a list of lists (2D array) of Strings
-        // Each row is an individual article text + label
+        // Because records stretch over multiple lines in datasets, we have to do some extra work
 
         // Prepare
         InputStream input = null;
