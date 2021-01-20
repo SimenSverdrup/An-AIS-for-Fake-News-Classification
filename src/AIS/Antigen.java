@@ -35,14 +35,16 @@ public class Antigen {
         this.sources[length-1] = this.sources[length-1].substring(0, this.sources[length-1].length());
 
         for (int i=0; i<this.sources.length; i++) {
-            this.sources[i] = this.sources[i].substring(1, this.sources[i].length()-1);
+            this.sources[i] = this.sources[i].length() > 1 ? this.sources[i].substring(1, this.sources[i].length()-1) : this.sources[i];
             try {
                 URI uri = new URI(this.sources[i]);
                 String domain = uri.getHost();
-                this.sources[i] = domain.startsWith("www.") ? domain.substring(4) : domain;
+                if (domain != null) this.sources[i] = domain.startsWith("www.") ? domain.substring(4) : domain;
+                else this.sources[i] = "none";
             }
             catch (URISyntaxException err) {
                 System.out.println("Could not fetch host information");
+                this.sources[i] = "none";
             }
         }
     }

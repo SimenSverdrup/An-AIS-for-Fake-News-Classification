@@ -14,7 +14,7 @@ import java.util.List;
 import static Dataset.Dataset.FAKENEWSNET;
 
 public class Controller {
-    private final int maxLines = 100;
+    private final int maxLines = 50;
     private final Dataset dataset = FAKENEWSNET;
     private final int numberOfAntibodies = 10;
 
@@ -23,12 +23,18 @@ public class Controller {
 
         List<List<String>> list = parser.getData();
 
-        for (List<String> record : list) {
-            Antigen antigen = new Antigen(record);
+        int number_of_records = list.size();
+        Antigen[] antigens = new Antigen[number_of_records];
 
+        int i = 0;
+
+        for (List<String> record : list) {
+            antigens[i] = new Antigen(record);
+            System.out.println(i + Arrays.toString(antigens[i].sources));
+            i++;
         }
 
-        //FeatureExtractor featureExtractor = new FeatureExtractor();
+        // Deretter: kjør gjennom hash for å lage feature vectors, gjør om noen av antigens til antibodies
 
         // Algorithm:
         // Extract features
