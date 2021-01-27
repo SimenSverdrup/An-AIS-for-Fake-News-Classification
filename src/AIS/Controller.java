@@ -11,40 +11,74 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
+
 import static Dataset.Dataset.FAKENEWSNET;
 
 public class Controller {
-    private final int maxLines = 50;
+    private final int max_lines = 30;
     private final Dataset dataset = FAKENEWSNET;
-    private final int numberOfAntibodies = 10;
+    private final double antibody_ratio = 0.1;
+    private final int number_of_features = 1;
+    private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
+    // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
+    // FEATURE_NEGATION_WORDS_TF, FEATURE_EXCLUSIVE_WORDS_TF, FEATURE_SPECIAL_CHARACTERS, FEATURE_CAPITAL_LETTERS,
+    // FEATURE_GRAMMAR, FEATURE_HEADLINE_WEIGHTING, FEATURE_PRECENCE_OF_NUMBERS, FEATURE_NLP = false;
+    private final int k = 10;   // k-fold cross validation split
+
 
     public Controller() throws FileNotFoundException, URISyntaxException {
-        Parser parser = new Parser(this.dataset, this.maxLines);
+        Parser parser = new Parser(this.dataset, this.max_lines + 1); // + 1 because first line are headers only
 
         List<List<String>> list = parser.getData();
+        list.remove(0); // remove headers
 
         int number_of_records = list.size();
         Antigen[] antigens = new Antigen[number_of_records];
 
         int i = 0;
-
         for (List<String> record : list) {
-            antigens[i] = new Antigen(record);
-            System.out.println(i + Arrays.toString(antigens[i].sources));
+            antigens[i] = new Antigen(record, number_of_features);
             i++;
         }
 
-        // Deretter: kjør gjennom hash for å lage feature vectors, gjør om noen av antigens til antibodies
+        FeatureExtractor fe = new FeatureExtractor(features_used);
+        antigens = fe.extractFeatures(antigens);
+
+        Normaliser norm = new Normaliser();
+        antigens = norm.NormaliseFeatures(antigens);
+
+        Antibody[] antibodies = new Antibody[(int) Math.floor(antigens.length*antibody_ratio)];
+
+        for (int j=0; j<antibodies.length; j++) {
+            int rand = ThreadLocalRandom.current().nextInt(0, antigens.length-1);
+            antibodies[j] = new Antibody(antigens[rand]);
+            antibodies[j].RR_radius = 0.1;
+        }
+
+        Antigen[][] antigens_split = new Antigen[k][(int) Math.floor(antigens.length/(float) k)];
+
+        for (int index=0; index<k; index++) {
+            System.arraycopy(antigens, index*antigens_split[index].length, antigens_split[index], 0, antigens_split[index].length);
+        }
+
+
+        // TODO: sett opp selve algoritmen, med cloning, mutation, affinity beregning, class assignment (classification)
+        // TODO: Implementer en GUI for å se accuracy over tid og gjerne plott antibodies med RR og antigens i 2D
+        // TODO: vurder om du burde slette antigensa som også har blitt til antibodies, fra antigens
+        // TODO: lag noe heuristikk for RR radius initialisering
+
 
         // Algorithm:
         // Extract features
         // Normalise features (AIRS claims that the exact normalisation function doesn't matter, but within [0,1])
         // Put features into feature vectors
         // Select feature vectors to be antibodies and antigens (select n at random)
-        // Split antigens into test and training
         // Add RR radius field to antibodies (initialised to some value, can use different heuristics)
             // Start with big radius
-        // Train antibodies with k-fold cross-validation testing (with k=10?):
+            // Initialiser RR radius til nærmeste AG med annen klasse (slik som i AISLFS) eller kun for å omfatte nærmeste AG uansett klasse (slik som i MAIM)
+        // Split antigens into test and training (with k-fold cross-validation testing (with k=10?))
+        // Train antibodies:
             // For each antibody:
             // While more antigens available for training:
                 // Expose AIS to antigen (as feature vector, not raw)
@@ -74,11 +108,16 @@ public class Controller {
                         // Is this smart? Antibodies
         // (Perform apothesis of unneeded antibodies)
             // Replace the n antibodies which didn't detect a single antigen with the n least detected antigens?
+            // Sort of like in AISLFS
         // Test AIS on the testing set antigens
             // For each antigen in testing set:
                 // Calculate predicted class of antigen according to some voting heuristic
                     // Voting heuristic based on the one from AISLFS where the affinities are considered
                 // Calculate (+plot) accuracy
+    }
+
+    public static boolean contains(final int[] arr, final int key) {
+        return Arrays.stream(arr).anyMatch(i -> i == key);
     }
 
     public void TestParser(List<List<String>> list) {
@@ -103,14 +142,7 @@ public class Controller {
     public void TestNormaliser() {
         // Test Normaliser
 
-        double[] sub_list1 = {12.5, 40.6, 11.9, 98.1};
-        double[] sub_list2 = {3.2, 48.6, 67.9, 90.1};
-        double[][] test_list = {sub_list1, sub_list2};
-        System.out.println("Old list: " + Arrays.deepToString(test_list));
 
-        Normaliser norm = new Normaliser();
-        double[][] new_list = norm.NormaliseFeatures(test_list);
-        System.out.println("New list: " + Arrays.deepToString(new_list));
     }
 
     public void TestMutate() {
@@ -119,11 +151,23 @@ public class Controller {
         System.out.println("Old list: " + Arrays.toString(vector));
 
         Mutate mutate = new Mutate();
-        double[] vector2 = mutate.MutateVector(vector, 0.5);
+        double[] vector2 = mutate.mutateVector(vector);
+        System.out.println("New list: " + Arrays.toString(vector2));
+
+        vector2 = mutate.mutateVector(vector);
+        System.out.println("New list: " + Arrays.toString(vector2));
+
+        vector2 = mutate.mutateVector(vector);
+        System.out.println("New list: " + Arrays.toString(vector2));
+
+        vector2 = mutate.mutateVector(vector);
+        System.out.println("New list: " + Arrays.toString(vector2));
+
+        vector2 = mutate.mutateVector(vector);
         System.out.println("New list: " + Arrays.toString(vector2));
 
         System.out.println("Old value: " + 0.5);
-        double val = mutate.MutateScalar(0.5, 0.9);
+        double val = mutate.mutateScalar(0.5);
         System.out.println("New value: " + val);
     }
 
