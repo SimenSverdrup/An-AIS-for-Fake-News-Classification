@@ -10,30 +10,39 @@ public class Parser {
     public static final char DEFAULT_SEPARATOR = ',';
     public static final char DEFAULT_QUOTE_CHARACTER = '\"';
     public static final int DEFAULT_SKIP_LINES = 0;
-    public static final String FNN_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Prosjektoppgave\\Kode\\IMAIS-FNC\\Datasets\\FNID dataset\\fake news detection(FakeNewsNet)\\fnn_train.csv";
-    public static final String LIAR_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Prosjektoppgave\\Kode\\IMAIS-FNC\\Datasets\\FNID dataset\\fake news detection(LIAR)\\liar_train.csv";
-    public static final String KAGGLE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Prosjektoppgave\\Kode\\IMAIS-FNC\\Datasets\\Kaggle Fake News\\train.csv";
+    public static final String FAKENEWSNET_TRAIN_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_train.csv";
+    public static final String FAKENEWSNET_TEST_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_test.csv";
+    public static final String FAKEDDIT_PATH = "";
     public String path = "";
 
     // Remember that the first line of data only contains the headers!
     private List<List<String>> data;
 
 
-    public Parser(Dataset dataset) throws FileNotFoundException {
+    public Parser(Dataset dataset, int maxLines) throws FileNotFoundException {
         // Constructor for default separator (comma)
 
         switch(dataset) {
-            case FNN -> this.path = FNN_PATH;
-            case LIAR -> this.path = LIAR_PATH;
-            case KAGGLE -> this.path = KAGGLE_PATH;
+            case FAKENEWSNET -> this.path = FAKENEWSNET_TRAIN_PATH;
+            case FAKEDDIT -> this.path = FAKEDDIT_PATH;
             default -> this.path = "";
         }
 
-        this.data = parseCSVtoList(this.path, DEFAULT_SEPARATOR);
+        this.data = parseFNN(this.path, maxLines);
+    }
+
+    public static List<List<String>> parseFNN(String path, int maxLines) throws FileNotFoundException {
+        return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
+    }
+
+    public static List<List<String>> parseFAKEDDIT(String path, int maxLines) throws FileNotFoundException {
+        // TODO: implement parser for the Fakeddit dataset
+
+        return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
     }
 
 
-    public static List<List<String>> parseCSVtoList(String path, char separator) throws FileNotFoundException {
+    public static List<List<String>> parseCSVtoList(String path, char separator, int maxLines) throws FileNotFoundException {
         // Parse raw CSV file to a list of lists (2D array) of Strings
         // Because records stretch over multiple lines in datasets, we have to do some extra work
 
@@ -44,16 +53,18 @@ public class Parser {
         List<List<String>> CSV_list = new ArrayList<List<String>>();
         String line = null;
         StringBuilder record = new StringBuilder();
+        int lineNumber = 0;
 
         // Parse
         try {
             reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
-            while ((line = reader.readLine()) != null) {
+            while (((line = reader.readLine()) != null) && (lineNumber < maxLines )) {
                 record.append(line);
                 if (line.endsWith(",fake") || line.endsWith(",real") || line.endsWith("label_fnn")) {
                     // end of record
                     CSV_list.add(parseRecord(record.toString(), separator));
                     record = new StringBuilder(); // reset
+                    lineNumber++;
                 }
             }
         } catch (IOException e) {
