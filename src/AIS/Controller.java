@@ -9,22 +9,25 @@ import Features.Normaliser;
 import java.io.FileNotFoundException;
 import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static Dataset.Dataset.FAKENEWSNET;
 
 public class Controller {
-    private final int max_lines = 30;
+    private final int max_lines = 1000;
+    private final int k = 10;   // k-fold cross validation split
+    private final int number_of_antibody_clones = 15; // the amount of clones for each antibody
+    private final double RR_radius = 0.1;
     private final Dataset dataset = FAKENEWSNET;
-    private final double antibody_ratio = 0.1;
+    private final double antibody_ratio = 0.08;
     private final int number_of_features = 1;
+    private final int antibody_training_cycles = 50;
     private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
     // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
     // FEATURE_NEGATION_WORDS_TF, FEATURE_EXCLUSIVE_WORDS_TF, FEATURE_SPECIAL_CHARACTERS, FEATURE_CAPITAL_LETTERS,
     // FEATURE_GRAMMAR, FEATURE_HEADLINE_WEIGHTING, FEATURE_PRECENCE_OF_NUMBERS, FEATURE_NLP = false;
-    private final int k = 10;   // k-fold cross validation split
+
 
 
     public Controller() throws FileNotFoundException, URISyntaxException {
@@ -53,7 +56,7 @@ public class Controller {
         for (int j=0; j<antibodies.length; j++) {
             int rand = ThreadLocalRandom.current().nextInt(0, antigens.length-1);
             antibodies[j] = new Antibody(antigens[rand]);
-            antibodies[j].RR_radius = 0.1;
+            antibodies[j].RR_radius = this.RR_radius;
         }
 
         Antigen[][] antigens_split = new Antigen[k][(int) Math.floor(antigens.length/(float) k)];
@@ -62,11 +65,91 @@ public class Controller {
             System.arraycopy(antigens, index*antigens_split[index].length, antigens_split[index], 0, antigens_split[index].length);
         }
 
+        double[] accuracies = new double[k];
 
-        // TODO: sett opp selve algoritmen, med cloning, mutation, affinity beregning, class assignment (classification)
+        for (int k = 0; k<this.k; k++) {
+            // k marks the index of the Antigen vector used for testing (this round)
+
+            for (int antibody_index=0; antibody_index<antibodies.length; antibody_index++) {
+                double best_score = 0;
+
+                for (Antigen[] antigen_vector : antigens_split) {
+                    if (antigen_vector == antigens_split[k]) continue; // we don't want to use this vector for training this round, only testing
+                    boolean new_round = true; // the antibody will repeat the cloning and mutation process if a clone outperformed the parent in the previous iteration
+
+                    while (new_round) {
+                        new_round = false;
+
+                        for (Antigen antigen : antigen_vector) {
+                            // First we need to find the current connected antibodies to every antigen,
+                            // as this information is used in the antibody fitness calculation
+                            antigen.findConnectedAntibodies(antibodies);
+                        }
+
+                        antibodies[antibody_index].calculateFitness(antigen_vector);
+
+                        Antibody[] antibody_clones = new Antibody[number_of_antibody_clones]; // the clones of the specific, single antibody
+
+                        for (int index=0; index<number_of_antibody_clones; index++) {
+                            // Generate, mutate and calculate fitness of the antibody clones,
+                            // the best performing one replaces the parent, if the fitness value is better
+                            // (could also do as in AISLFS and have the best-performing clone replace the parent regardless)
+                            antibody_clones[index] = new Antibody(antibodies[antibody_index]);
+                        }
+
+                        int clone_number = 0;
+                        int best_clone_index = (int) (Math.random() * (number_of_antibody_clones - 1));
+                        best_score = antibodies[antibody_index].fitness; // initialised to the parent's fitness
+
+                        for (Antibody clone : antibody_clones) {
+                            // fitness value is saved to member variable, note: we don't need to call findConnectedAntigens (as this is called within calculateFitness)
+                            clone.mutate();
+                            clone.calculateFitness(antigen_vector);
+
+                            if (clone.fitness > best_score) {
+                                best_score = clone.fitness;
+                                best_clone_index = clone_number;
+                                new_round = true;
+                            }
+
+                            clone_number++;
+                        }
+
+                        if (best_score > antibodies[antibody_index].fitness) antibodies[antibody_index] = new Antibody(antibody_clones[best_clone_index]); // NOTE, may lead to local optima
+                    }
+                }
+            }
+
+            double correct_predictions = 0;
+
+            for (Antigen ag : antigens_split[k]) {
+                ag.findConnectedAntibodies(antibodies);
+                System.out.println("\nNumber of antibodies connected to this antigen: " + ag.connected_antibodies.size());
+
+                ag.predictClass();
+                if (ag.true_class.equals(ag.predicted_class)) {
+                    correct_predictions++;
+                }
+            }
+
+            accuracies[k] = correct_predictions/antigens_split[k].length;
+
+            System.out.println("\n--------------------------------------");
+            System.out.println("Accuracy for testing set k=" + k + ": " + accuracies[k]);
+            System.out.println("--------------------------------------\n");
+        }
+
+        double total_acc = 0;
+
+        for (double acc : accuracies) {
+            total_acc += acc;
+        }
+        System.out.println("\nTotal accuracy: " + total_acc/accuracies.length);
+
+
         // TODO: Implementer en GUI for å se accuracy over tid og gjerne plott antibodies med RR og antigens i 2D
         // TODO: vurder om du burde slette antigensa som også har blitt til antibodies, fra antigens
-        // TODO: lag noe heuristikk for RR radius initialisering
+        // TODO: lag noe bedre heuristikk for RR radius initialisering og vurder om denne burde mutere med høyere sannsynlighet
 
 
         // Algorithm:

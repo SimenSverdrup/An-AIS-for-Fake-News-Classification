@@ -21,30 +21,56 @@ public class Antibody {
     public String headline;
 
     public Antibody(Antigen antigen) {
-        // record is a single line in the form:
-        // id,date,speaker,statement,sources,paragraph_based_content,fullText_based_content,label_fnn
+        // Constructor taking an antigen input
+
         this.true_class = antigen.true_class;
         this.id = antigen.id;
         this.speaker = antigen.speaker;
         this.headline = antigen.headline;
         this.raw_text = antigen.raw_text;
-        this.sources = antigen.sources;
-        this.feature_list = antigen.feature_list;
+        this.sources = antigen.sources.clone();
+        this.feature_list = antigen.feature_list.clone();
 
         this.connected_antigens = new ArrayList<>();
         this.affinities = new ArrayList<>();
     }
 
+    public Antibody(Antibody antibody) {
+        // Constructor taking another antibody as input
+
+        this.true_class = antibody.true_class;
+        this.id = antibody.id;
+        this.speaker = antibody.speaker;
+        this.headline = antibody.headline;
+        this.raw_text = antibody.raw_text;
+        this.sources = antibody.sources.clone();
+        this.feature_list = antibody.feature_list.clone();
+        this.RR_radius = antibody.RR_radius;
+        this.number_of_classes = antibody.number_of_classes;
+        this.true_class = antibody.true_class;
+        this.fitness = antibody.fitness;
+        this.affinities = antibody.affinities;
+        this.connected_antigens = antibody.connected_antigens;
+    }
+
     public void reset() {
         // Resets the antibody, should be called between learning iterations
-        this.connected_antigens.clear();
-        this.affinities.clear();
+        if (this.connected_antigens != null) {
+            this.connected_antigens.clear();
+            this.affinities.clear();
+        }
         this.fitness = 0;
     }
 
     public void findConnectedAntigens(Antigen[] antigens) {
         // Antigens input argument is all the antigens
+
+        this.reset();
+
         Affinity aff = new Affinity();
+
+        this.connected_antigens = new ArrayList<>();
+        this.affinities = new ArrayList<>();
 
         for (Antigen ag : antigens) {
             double temp = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
@@ -56,7 +82,7 @@ public class Antibody {
         }
     }
 
-    public double calculateFitness(Antigen[] antigens) {
+    public void calculateFitness(Antigen[] antigens) {
         // Antigens input argument is all the antigens
         // Fitness function from MAIM and VALIS
         // F(b) = SharingFactor*WeightedAccuracy/AG_interactions
@@ -82,33 +108,32 @@ public class Antibody {
 
             // Calculate the interaction share and add to the sharing factor
             double ag_affinities = 0;
-            for (double affinity : ag.affinities) {
-                ag_affinities += affinity;
+            for (double ag_aff : ag.affinities) {
+                // Note, the antigen's affinities (not this antibody's affinities)
+                ag_affinities += ag_aff;
             }
 
-            sharing_factor += Math.pow(temp, 2)/ag_affinities;
+            if (ag_affinities > 0) sharing_factor += Math.pow(temp, 2)/ag_affinities;
+            // Sharing factor is large when few antibodies are connected to the antigen, this reward being one of few antibodies to connect to the antigen
         }
 
         double weighted_accuracy = (1 + this.correct_AG_interactions)/(this.number_of_classes + AG_interactions);  // Apply Laplacian smoothing
 
-        this.fitness = sharing_factor*weighted_accuracy/AG_interactions;
-
-        System.out.println("AG_interactions: " + AG_interactions);
-        System.out.println("correct_AG_interactions: " + this.correct_AG_interactions);
-        System.out.println("weighted_accuracy: " + weighted_accuracy);
-        System.out.println("sharing_factor: " + sharing_factor);
-        System.out.println("Fitness: " + this.fitness);
-
-        return this.fitness;
+        if (AG_interactions > 0) {
+            this.fitness = Math.max((sharing_factor*weighted_accuracy/AG_interactions)-(this.RR_radius*0.03), 0.0); //TODO OBS OBS tvinger fram liten RR radius her
+        }
+        else {
+            this.fitness = 0;
+        }
+        /*
+        System.out.println("\nAG_interactions: " + AG_interactions + "\nSharing factor: " + sharing_factor);
+        System.out.println("Weighted acc: " + weighted_accuracy + "\nthis.correct_AG_interactions: " + this.correct_AG_interactions);
+        System.out.println("Fitness: " + this.fitness);*/
     }
 
     public void mutate() {
         Mutate mut = new Mutate();
         this.RR_radius = mut.mutateScalar(this.RR_radius);
         this.feature_list = mut.mutateVector(this.feature_list);
-    }
-
-    public void test() {
-        assert(this.true_class.equals("fake") || this.true_class.equals("true"));
     }
 }

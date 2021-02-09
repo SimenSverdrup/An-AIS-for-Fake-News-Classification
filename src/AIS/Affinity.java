@@ -1,5 +1,7 @@
 package AIS;
 
+import java.util.Arrays;
+
 public class Affinity {
     public double CalculateDistance(double[] antigen_features, double[] antibody_features) {
         // Calculates Euclidean distance between two points (antigen and antibody)
@@ -15,8 +17,10 @@ public class Affinity {
     }
 
     public double CalculateAffinity(double[] antigen_features, double[] antibody_features, double RR_radius) {
+        // Affinity => 1 when euclidean distance very small, affinity => 0 when euclidean distance is barely within RR
         double euclidean_distance = CalculateDistance(antigen_features, antibody_features);
-        if (euclidean_distance <= RR_radius) return 1/euclidean_distance;
+        if (RR_radius == 0) return 0;
+        else if (euclidean_distance <= RR_radius) return (1 - euclidean_distance/RR_radius);
         else return 0;
     }
 }
