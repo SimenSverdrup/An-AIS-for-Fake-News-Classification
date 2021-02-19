@@ -1,8 +1,10 @@
 package AIS;
 
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,6 +14,9 @@ public class Antigen {
     public String[] classes = {"real", "fake"};
     public String predicted_class;  // the predicted class of the antigen, after all antibodies have voted and decided
     public double[] class_vote;
+    public double average_affinity;
+    public double max_affinity;
+    public double minimum_affinity;
     // length k, where k is the number of classes
     // the array will contain the cumulative voting score for each of the classes, the one with the highest value will be the predicted class
 
@@ -19,6 +24,7 @@ public class Antigen {
     public double[] feature_list;
     public List<Antibody> connected_antibodies; // the connected antibodies
     public List<Double> affinities; // the affinities to the antibodies (must be in the same order as antibodies)
+    public List<Double> sorted_affinities; // the affinities to the antibodies (in increasing order)
 
 
     public String[] tokenizedText;
@@ -63,7 +69,7 @@ public class Antigen {
         }
     }
 
-    public void findConnectedAntibodies(Antibody[] antibodies) {
+    public void findConnectedAntibodies(ArrayList<Antibody> antibodies) {
         // Antibodies input argument is all the antibodies
         this.reset();
 
@@ -78,8 +84,28 @@ public class Antigen {
             }
         }
 
-        //System.out.println("\nAntigen.findConnectedAntibodies, id: " + this.id);
-        //System.out.println("Antigen.findConnectedAntibodies, connected antibodies: " + this.connected_antibodies + "\n");
+        // System.out.println("\nAntigen.findConnectedAntibodies, id: " + this.id);
+        // System.out.println("Antigen.findConnectedAntibodies, connected antibodies: " + this.connected_antibodies + "\n");
+    }
+
+    public void calculateAffinities() {
+        double total_aff = 0;
+        double min_aff = 1;
+        double max_aff = 0;
+        int ab_idx = 0;
+
+        for (Antibody connected_ab : this.connected_antibodies) {
+            total_aff += this.affinities.get(ab_idx);
+            if (this.affinities.get(ab_idx) > max_aff) max_aff = this.affinities.get(ab_idx);
+            else if (this.affinities.get(ab_idx) < min_aff) min_aff = this.affinities.get(ab_idx);
+            ab_idx++;
+        }
+
+        this.sorted_affinities = this.affinities;
+        Collections.sort(this.sorted_affinities);
+        this.average_affinity = total_aff/this.connected_antibodies.size();
+        this.max_affinity = max_aff;
+        this.minimum_affinity = min_aff;
     }
 
     public void predictClass() {

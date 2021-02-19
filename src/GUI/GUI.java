@@ -1,4 +1,9 @@
 package GUI;
 
-public class GUI {
+import javafx.scene.layout.BorderPane;
+
+public class GUI extends BorderPane {
+
+
+
 }

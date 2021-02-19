@@ -1,13 +1,10 @@
 import AIS.Controller;
-import Dataset.Parser;
-import static Dataset.Dataset.*;
-
-import java.io.FileNotFoundException;
-import java.util.List;
 
 
 public class Main {
     public static void main(String[] args) throws Exception {
         Controller controller = new Controller();
+        controller.run();
+        //GUI2 gui = new GUI2(controller);
     }
 }

@@ -3,6 +3,7 @@ package AIS;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class Antibody {
     public String true_class;
@@ -13,7 +14,8 @@ public class Antibody {
     public List<Antigen> connected_antigens; // the antigens which this antibody is connected to (within RR)
     public List<Double> affinities; // the affinities to the antigens (must be in the same order as antigens)
     public double fitness;
-    double correct_AG_interactions;
+    public double correct_AG_interactions;
+    public double single_aff; // the affinity to a single antigen
 
     public String raw_text;
     public String[] sources;
@@ -62,7 +64,7 @@ public class Antibody {
         this.fitness = 0;
     }
 
-    public void findConnectedAntigens(Antigen[] antigens) {
+    public void findConnectedAntigens(ArrayList<Antigen> antigens) {
         // Antigens input argument is all the antigens
 
         this.reset();
@@ -82,7 +84,7 @@ public class Antibody {
         }
     }
 
-    public void calculateFitness(Antigen[] antigens) {
+    public void calculateFitness(ArrayList<Antigen> antigens) {
         // Antigens input argument is all the antigens
         // Fitness function from MAIM and VALIS
         // F(b) = SharingFactor*WeightedAccuracy/AG_interactions
@@ -120,7 +122,7 @@ public class Antibody {
         double weighted_accuracy = (1 + this.correct_AG_interactions)/(this.number_of_classes + AG_interactions);  // Apply Laplacian smoothing
 
         if (AG_interactions > 0) {
-            this.fitness = Math.max((sharing_factor*weighted_accuracy/AG_interactions)-(this.RR_radius*0.03), 0.0); //TODO OBS OBS tvinger fram liten RR radius her
+            this.fitness = Math.max((sharing_factor*weighted_accuracy/AG_interactions)-(this.RR_radius*0.01), 0.0); //TODO OBS OBS tvinger fram liten RR radius her
         }
         else {
             this.fitness = 0;
@@ -131,9 +133,41 @@ public class Antibody {
         System.out.println("Fitness: " + this.fitness);*/
     }
 
-    public void mutate() {
+    public void random() {
+        // Initialises the antibody randomly
+        this.reset();
+
+        for (int idx=0; idx<this.feature_list.length; idx++) {
+            this.feature_list[idx] = Math.random();
+        }
+        this.RR_radius = Math.random()*0.15; // TODO: NOTE, should probably be lower when more features
+        this.id = String.valueOf((int) (Math.random()*10000));
+
+        double rnd = Math.random();
+        if (rnd < 0.5) this.true_class = "real";
+        else this.true_class = "fake";
+    }
+
+    public void mutate(double vector_mutation_prob, double scalar_mutation_prob) {
         Mutate mut = new Mutate();
-        this.RR_radius = mut.mutateScalar(this.RR_radius);
-        this.feature_list = mut.mutateVector(this.feature_list);
+        this.id = String.valueOf( (int) Math.floor(Math.random()*10000));
+        this.RR_radius = mut.mutateScalar(this.RR_radius, scalar_mutation_prob);
+        this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob);
+    }
+
+    public boolean equals(Antibody other_ab) {
+        return this.id.equals(other_ab.id);
+    }
+
+    public void calculateAffinity(Antigen ag) {
+        Affinity aff = new Affinity();
+
+        this.single_aff = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
+    }
+
+    public double calculateAffinity(Antibody other_ab) {
+        Affinity aff = new Affinity();
+
+        return aff.CalculateAffinity(other_ab.feature_list, this.feature_list, this.RR_radius);
     }
 }

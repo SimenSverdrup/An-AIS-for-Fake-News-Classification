@@ -3,6 +3,9 @@ package Features;
 import AIS.Antigen;
 import Dataset.LexiconParser;
 
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
@@ -46,7 +49,7 @@ public class FeatureExtractor {
         }
     }
 
-    public Antigen[] extractFeatures(Antigen[] antigens) {
+    public ArrayList<Antigen> extractFeatures(ArrayList<Antigen> antigens) {
         // Method for extracting features
         int index = 0;
 
@@ -69,7 +72,7 @@ public class FeatureExtractor {
         return antigens;
     }
 
-    public Antigen[] TF(Antigen[] antigens, int index) {
+    public ArrayList<Antigen> TF(ArrayList<Antigen> antigens, int index) {
         this.getLexicon();
         int matches = 0;
 
@@ -88,13 +91,13 @@ public class FeatureExtractor {
         return antigens;
     }
 
-    public Antigen[] TFIDF(Antigen[] antigens, int index) {
+    public ArrayList<Antigen> TFIDF(ArrayList<Antigen> antigens, int index) {
 
 
         return antigens;
     }
 
-    public Antigen[] wordCount(Antigen[] antigens, int index) {
+    public ArrayList<Antigen> wordCount(ArrayList<Antigen> antigens, int index) {
         // An extremely simple feature simply counting the words in the raw text
 
         for (Antigen ag : antigens) {

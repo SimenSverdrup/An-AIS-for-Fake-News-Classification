@@ -7,15 +7,11 @@ import java.util.Random;
 
 public class Mutate {
     private final double range_min_feature_list = 0.0; // the minimum value to be added/subtracted from the feature list
-    private final double range_max_feature_list = 0.03; // the maximum value to be added/subtracted from the feature list
+    private final double range_max_feature_list = 0.1; // the maximum value to be added/subtracted from the feature list
 
 
-    private final double range_min_RR_radius = 0.0; // the minimum value to be added/subtracted from the feature list
-    private final double range_max_RR_radius = 0.03; // the maximum value to be added/subtracted from the feature list
-
-    public final double vector_probability = 0.7;
-    public final double scalar_probability = 0.5;
-    // Note, the more elements in the vector (feature list), the less the vector probability should be
+    private final double range_min_RR_radius = 0.0; // the minimum value to be added/subtracted from the RR radius
+    private final double range_max_RR_radius = 0.06; // the maximum value to be added/subtracted from the RR radius
 
 
     public Mutate() {
@@ -30,14 +26,15 @@ public class Mutate {
         //System.out.println(this.probability);
     }
 
-    double[] mutateVector(double[] feature_vector) {
+    double[] mutateVector(double[] feature_vector, double mutation_probability) {
         // Mutates the input vector according to the probability
+        // Note, the more elements in the vector (feature list), the less the vector probability should be
 
         int i=0;
 
         for (double value : feature_vector) {
             double randomValue = Math.random();  //0.0 to 0.99
-            if (randomValue <= this.vector_probability) {
+            if (randomValue <= mutation_probability) {
                 double randomValue2 = Math.random();  //0.0 to 0.99
                 if (randomValue2 >= 0.5) {
                     // Randomly select whether to add or subtract
@@ -53,11 +50,11 @@ public class Mutate {
         return feature_vector;
     }
 
-    double mutateScalar(double value) {
+    double mutateScalar(double value, double mutation_probability) {
         // Mutates a single value, made for mutating the RR radius
 
         double randomValue = Math.random();  //0.0 to 99.9
-        if (randomValue <= this.scalar_probability) {
+        if (randomValue <= mutation_probability) {
             double randomValue2 = Math.random();  //0.0 to 0.99
             double randomValue3 = (this.range_max_RR_radius - this.range_min_RR_radius) * Math.random();
 

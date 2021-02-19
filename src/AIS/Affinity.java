@@ -20,7 +20,8 @@ public class Affinity {
         // Affinity => 1 when euclidean distance very small, affinity => 0 when euclidean distance is barely within RR
         double euclidean_distance = CalculateDistance(antigen_features, antibody_features);
         if (RR_radius == 0) return 0;
-        else if (euclidean_distance <= RR_radius) return (1 - euclidean_distance/RR_radius);
+        else if (euclidean_distance <= RR_radius) return 1 - (euclidean_distance / (1 + euclidean_distance)); //(1 - euclidean_distance/RR_radius);
+            // This affinity calculation is made by me
         else return 0;
     }
 }
