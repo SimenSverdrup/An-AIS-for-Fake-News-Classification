@@ -6,13 +6,9 @@ import java.util.Arrays;
 import java.util.Random;
 
 public class Mutate {
-    private final double range_min_feature_list = 0.0; // the minimum value to be added/subtracted from the feature list
-    private final double range_max_feature_list = 0.1; // the maximum value to be added/subtracted from the feature list
-
-
-    private final double range_min_RR_radius = 0.0; // the minimum value to be added/subtracted from the RR radius
-    private final double range_max_RR_radius = 0.06; // the maximum value to be added/subtracted from the RR radius
-
+    private final double range_min = 0.1; // the minimum coefficient to be multiplied with original value
+    private final double range_max = 2.0; // the maximum coefficient to be multiplied with original value
+    private final double max_add = 0.8; // the maximum value to be added/subtracted
 
     public Mutate() {
         // Fitness is the fitness of the parent antibody
@@ -21,28 +17,26 @@ public class Mutate {
         // Probability must be  a number between [0,1], but should mostly be less than 1/(1+n),
         // where n is the length of the feature vector
         // that means less than 0.33
-
-        //this.probability = 1/fitness;
-        //System.out.println(this.probability);
     }
 
     double[] mutateVector(double[] feature_vector, double mutation_probability) {
         // Mutates the input vector according to the probability
         // Note, the more elements in the vector (feature list), the less the vector probability should be
+        Random rand = new Random(System.currentTimeMillis());
 
         int i=0;
 
         for (double value : feature_vector) {
-            double randomValue = Math.random();  //0.0 to 0.99
+            double randomValue = rand.nextDouble(); //0.0 to 0.99
             if (randomValue <= mutation_probability) {
-                double randomValue2 = Math.random();  //0.0 to 0.99
-                if (randomValue2 >= 0.5) {
-                    // Randomly select whether to add or subtract
-                    feature_vector[i] = Math.min((this.range_max_feature_list - this.range_min_feature_list) * Math.random() + feature_vector[i], 1.0);
-                }
-                else {
-                    feature_vector[i] = Math.max(feature_vector[i] - (this.range_max_feature_list - this.range_min_feature_list) * Math.random(), 0.0);
-                }
+                //double number = max_add * rand.nextDouble();
+                //double randomValue2 = rand.nextDouble();
+                //if (randomValue2 > 0.5) feature_vector[i] = feature_vector[i] - number;
+                //else feature_vector[i] = feature_vector[i] + number;
+
+                double coeff = range_min + (range_max - range_min) * rand.nextDouble();
+                if (value*coeff > 1.0) feature_vector[i] = 1.0;
+                else feature_vector[i] = Math.max(value * coeff, 0.0);
             }
             i++;
         }
@@ -52,19 +46,18 @@ public class Mutate {
 
     double mutateScalar(double value, double mutation_probability) {
         // Mutates a single value, made for mutating the RR radius
+        Random rand = new Random(System.currentTimeMillis());
+        double randomValue = rand.nextDouble(); //0.0 to 0.99
 
-        double randomValue = Math.random();  //0.0 to 99.9
         if (randomValue <= mutation_probability) {
-            double randomValue2 = Math.random();  //0.0 to 0.99
-            double randomValue3 = (this.range_max_RR_radius - this.range_min_RR_radius) * Math.random();
+            //double number = max_add * rand.nextDouble();
+            //double randomValue2 = rand.nextDouble();
+            //if (randomValue2 > 0.5) value = value - number;
+            //else value = value + number;
 
-            if (randomValue2 < 0.5) {
-                // Randomly select whether to add or subtract from value
-                value = Math.min(randomValue3 + value, 1.0);
-            }
-            else {
-                value = Math.max(value - randomValue3, 0.0);
-            }
+            double coeff = range_min + (range_max - range_min) * rand.nextDouble();
+            if (value*coeff > 1.0) value = 1.0;
+            else value = Math.max(value * coeff, 0.001);
         }
 
         return value;

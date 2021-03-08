@@ -1,7 +1,10 @@
 package AIS;
 
 
+import Dataset.Dataset;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -16,6 +19,8 @@ public class Antibody {
     public double fitness;
     public double correct_AG_interactions;
     public double single_aff; // the affinity to a single antigen
+    public Dataset dataset;
+    public int parent_index;
 
     public String raw_text;
     public String[] sources;
@@ -24,14 +29,12 @@ public class Antibody {
 
     public Antibody(Antigen antigen) {
         // Constructor taking an antigen input
-
-        this.true_class = antigen.true_class;
-        this.id = antigen.id;
-        this.speaker = antigen.speaker;
-        this.headline = antigen.headline;
-        this.raw_text = antigen.raw_text;
-        this.sources = antigen.sources.clone();
+        this.dataset = antigen.dataset;
         this.feature_list = antigen.feature_list.clone();
+        this.true_class = antigen.true_class;
+
+        Random rand = new Random(System.currentTimeMillis());
+        this.id = String.valueOf((int) Math.floor(rand.nextInt(1000000)));
 
         this.connected_antigens = new ArrayList<>();
         this.affinities = new ArrayList<>();
@@ -39,13 +42,10 @@ public class Antibody {
 
     public Antibody(Antibody antibody) {
         // Constructor taking another antibody as input
-
+        this.dataset = antibody.dataset;
         this.true_class = antibody.true_class;
         this.id = antibody.id;
-        this.speaker = antibody.speaker;
-        this.headline = antibody.headline;
-        this.raw_text = antibody.raw_text;
-        this.sources = antibody.sources.clone();
+
         this.feature_list = antibody.feature_list.clone();
         this.RR_radius = antibody.RR_radius;
         this.number_of_classes = antibody.number_of_classes;
@@ -62,6 +62,7 @@ public class Antibody {
             this.affinities.clear();
         }
         this.fitness = 0;
+        this.correct_AG_interactions = 0;
     }
 
     public void findConnectedAntigens(ArrayList<Antigen> antigens) {
@@ -75,10 +76,10 @@ public class Antibody {
         this.affinities = new ArrayList<>();
 
         for (Antigen ag : antigens) {
-            double temp = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
-            if (temp > 0) {
+            double affinity = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
+            if (affinity > 0) {
                 // The antigen is within the RR
-                this.affinities.add(temp);
+                this.affinities.add(affinity);
                 this.connected_antigens.add(ag);
             }
         }
@@ -89,70 +90,101 @@ public class Antibody {
         // Fitness function from MAIM and VALIS
         // F(b) = SharingFactor*WeightedAccuracy/AG_interactions
 
-        this.findConnectedAntigens(antigens);
+        this.findConnectedAntigens(antigens); // we fill up this.affinities and this.connected_antigens here
+        int number_of_connected_antigens = this.connected_antigens.size();
 
-        Affinity aff = new Affinity();
-        this.correct_AG_interactions = 0;
-        double AG_interactions = 0;
-        double sharing_factor = 0;
 
-        for (double affinity : this.affinities) {
-            // Sum up all the affinities to connected antigens
-            AG_interactions += affinity;
-        }
-
-        for (Antigen ag : this.connected_antigens) {
-            // Sum up all the affinities to connected antigens with the same class
-            // Note, this antibody votes for the same class - for all connected antigens (true_class of antibody)
-            double temp = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
-
-            if (ag.true_class.equals(this.true_class)) this.correct_AG_interactions += temp;
-
-            // Calculate the interaction share and add to the sharing factor
-            double ag_affinities = 0;
-            for (double ag_aff : ag.affinities) {
-                // Note, the antigen's affinities (not this antibody's affinities)
-                ag_affinities += ag_aff;
-            }
-
-            if (ag_affinities > 0) sharing_factor += Math.pow(temp, 2)/ag_affinities;
-            // Sharing factor is large when few antibodies are connected to the antigen, this reward being one of few antibodies to connect to the antigen
-        }
-
-        double weighted_accuracy = (1 + this.correct_AG_interactions)/(this.number_of_classes + AG_interactions);  // Apply Laplacian smoothing
-
-        if (AG_interactions > 0) {
-            this.fitness = Math.max((sharing_factor*weighted_accuracy/AG_interactions)-(this.RR_radius*0.01), 0.0); //TODO OBS OBS tvinger fram liten RR radius her
+        if (number_of_connected_antigens == 0) {
+            this.fitness = 0.0;
         }
         else {
-            this.fitness = 0;
+            double sharing_factor = 0;
+            int ag_idx = 0;
+            double ag_affinities = 0;
+            double total_affinities = 0;
+            double AB_interactions = 0;
+            double weighted_accuracy = 0;
+
+            for (double affinity : this.affinities) {
+                // Sum up all the affinities to connected antigens
+                total_affinities += affinity;
+            }
+
+            for (Antigen antigen : this.connected_antigens) {
+
+                // Sum up all the affinities to connected antigens with the same class
+                if (antigen.true_class.equals(this.true_class)) {
+                    this.correct_AG_interactions += this.affinities.get(ag_idx);
+                }
+
+                // Calculate the interaction share and add to the sharing factor
+                ag_affinities = 0;
+                for (double ag_aff : antigen.affinities) {
+                    // Note, the antigen's affinities (not this antibody's affinities)
+                    ag_affinities += ag_aff;
+                }
+
+                AB_interactions = this.affinities.get(ag_idx);
+                sharing_factor += Math.pow(AB_interactions, 2)/(ag_affinities); //part of the antigen that belongs to the antibody
+
+                ag_idx++;
+            }
+
+            weighted_accuracy = (this.correct_AG_interactions)/(total_affinities);  // Apply Laplacian smoothing, from VALIS (or not)
+
+            this.fitness = ((sharing_factor*weighted_accuracy)/(total_affinities));
         }
-        /*
-        System.out.println("\nAG_interactions: " + AG_interactions + "\nSharing factor: " + sharing_factor);
-        System.out.println("Weighted acc: " + weighted_accuracy + "\nthis.correct_AG_interactions: " + this.correct_AG_interactions);
-        System.out.println("Fitness: " + this.fitness);*/
     }
 
-    public void random() {
-        // Initialises the antibody randomly
+    public void random(List<Antigen> antigens) {
+        // Initialises the antibody randomly, with RR radius set to euclidean distance to random ag of same class
+        // and feature values are set randomly within a span of +-10% of corresponding max/min value in antigens of same class
+        // NOTE: don't need to set class, this is taken from antigen/antibody parent
+
         this.reset();
+        Affinity aff = new Affinity();
+        Random r = new Random();
 
         for (int idx=0; idx<this.feature_list.length; idx++) {
-            this.feature_list[idx] = Math.random();
-        }
-        this.RR_radius = Math.random()*0.15; // TODO: NOTE, should probably be lower when more features
-        this.id = String.valueOf((int) (Math.random()*10000));
+            // set feature values randomly, within +-10% of max/min corresponding values in same-class antigens
 
-        double rnd = Math.random();
-        if (rnd < 0.5) this.true_class = "real";
-        else this.true_class = "fake";
+            double max_val = 0; // maximum value at index idx, in antigens
+            double min_val = 1000; // minimum value at index idx, in antigens
+            for (Antigen ag : antigens) {
+                if (ag.true_class.equals(this.true_class)) {
+                    if (ag.feature_list[idx] > max_val) max_val = ag.feature_list[idx];
+                    else if (ag.feature_list[idx] < min_val) min_val = ag.feature_list[idx];
+                }
+                else {
+                    // Set antibody RR radius to euclidean distance to closest ag of DIFFERENT class (but not including)
+                    this.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, this.feature_list) - 0.001, this.RR_radius);
+                }
+            }
+            max_val = max_val*1.1;
+            min_val = min_val*0.9;
+
+            this.feature_list[idx] = min_val + (max_val - min_val) * r.nextDouble();
+        }
+
+        this.id = String.valueOf((int) (Math.random()*10000));
     }
 
     public void mutate(double vector_mutation_prob, double scalar_mutation_prob) {
+        Random rand = new Random(System.currentTimeMillis());
         Mutate mut = new Mutate();
-        this.id = String.valueOf( (int) Math.floor(Math.random()*10000));
-        this.RR_radius = mut.mutateScalar(this.RR_radius, scalar_mutation_prob);
-        this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob);
+        this.id = String.valueOf((int) Math.floor(rand.nextInt(1000000)));
+
+        double previous_RR = this.RR_radius;
+        double[] previous_feature_list = this.feature_list.clone();
+
+        do {
+            this.RR_radius = mut.mutateScalar(this.RR_radius, scalar_mutation_prob);
+            this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob);
+        } while ((this.RR_radius == previous_RR) && Arrays.equals(this.feature_list, previous_feature_list));
+    }
+
+    public void setParentIndex(int index) {
+        this.parent_index = index;
     }
 
     public boolean equals(Antibody other_ab) {
