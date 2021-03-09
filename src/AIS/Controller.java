@@ -13,8 +13,7 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static Dataset.Dataset.FAKENEWSNET;
-import static Dataset.Dataset.IRIS;
+import static Dataset.Dataset.*;
 
 
 public class Controller {
@@ -33,9 +32,9 @@ public class Controller {
     private final double antibody_ratio = 0.6;
     private final int generations = 300;
 
-    private final Dataset dataset = IRIS;
-    private final int max_lines = 1000;
-    private final int number_of_features = 4;
+    private final Dataset dataset = IRIS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
+    private final int max_lines = 2000;
+    private final int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
 
     private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
     // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
@@ -90,7 +89,10 @@ public class Controller {
             }
 
             // Extract features and initialise antibodies
-            if (this.dataset != IRIS) {
+            if ((this.dataset != IRIS) &&
+                    (this.dataset != WINE) &&
+                    (this.dataset != SPIRALS) &&
+                    (this.dataset != DIABETES)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens); // burde disse linjene byttes om?
             }
 
@@ -125,7 +127,7 @@ public class Controller {
 
                 clones.clear();
 
-                double reproduction_ratio = 0.2 * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * 1.5));
+                double reproduction_ratio = 0.25 * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * 1.5));
                 int number_of_new_antibodies = (int) (reproduction_ratio * this.antibodies.size());
 
                 if (number_of_new_antibodies < 1) {
@@ -133,7 +135,7 @@ public class Controller {
                     break;
                 }
 
-                System.out.println(number_of_new_antibodies);
+                //System.out.println("Number of new antibodies this generation: " + number_of_new_antibodies);
 
                 for (Antigen ag : this.training_antigens) {
                     // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
@@ -141,12 +143,8 @@ public class Controller {
                 }
 
                 for (Antibody ab : this.antibodies) {
-                    int correct = 0;
                     ab.findConnectedAntigens(this.training_antigens);
                     ab.calculateFitness(this.training_antigens);
-                    for (Antigen ag : ab.connected_antigens) {
-                        if (ag.true_class.equals(ab.true_class)) correct++;
-                    }
                 }
 
                 HashMap<Integer, Double> fitnesses = new HashMap<>();
@@ -171,7 +169,7 @@ public class Controller {
                     //System.out.println("\nAntibody RR radius: " + clone.RR_radius);
                     //System.out.println("Antibody feature list: " + Arrays.toString(clone.feature_list));
                     clone.reset();
-                    clone.mutate(1/((double) this.number_of_features), 1/((double) this.number_of_features));
+                    clone.mutate(1/(1 + (double) this.number_of_features), 1/(1 + (double) this.number_of_features));
                 }
 
                 fitnesses.clear();
@@ -481,7 +479,10 @@ public class Controller {
             this.testing_antigens.clear();
             this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            if (this.dataset != IRIS) this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+            if ((this.dataset != IRIS) &&
+                    (this.dataset != WINE) &&
+                    (this.dataset != SPIRALS) &&
+                    (this.dataset != DIABETES)) this.testing_antigens = fe.extractFeatures(this.testing_antigens);
             this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
 
             double correct_predictions = 0;

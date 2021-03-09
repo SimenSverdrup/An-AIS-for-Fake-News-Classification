@@ -14,10 +14,10 @@ public class Parser {
     public static final String FAKENEWSNET_TEST_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_test.csv";
     public static final String FAKEDDIT_PATH = "";
     public static final String IRIS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\iris.data";
-
+    public static final String WINE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\wine.data";
+    public static final String SPIRALS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\spirals.txt";
+    public static final String DIABETES_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\diabetes.csv";
     public String path = "";
-
-    // Remember that the first line of data only contains the headers! (not for iris)
     private List<List<String>> data;
 
 
@@ -34,9 +34,22 @@ public class Parser {
             }
             case IRIS -> {
                 this.path = IRIS_PATH;
-                this.data = parseIris(this.path, maxLines);
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
                 this.data.remove(this.data.size()-1); // remove last row (empty)
             }
+            case WINE -> {
+                this.path = WINE_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+            case SPIRALS -> {
+                this.path = SPIRALS_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+            case DIABETES -> {
+                this.path = DIABETES_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+
             default -> this.path = "";
         }
 
@@ -52,7 +65,7 @@ public class Parser {
         return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
     }
 
-    public static List<List<String>> parseIris(String path, int maxLines) throws FileNotFoundException {
+    public static List<List<String>> parseBenchmarkDatasets(String path, int maxLines) throws FileNotFoundException {
         InputStream input = null;
         input = new FileInputStream(path);
         BufferedReader reader = null;
