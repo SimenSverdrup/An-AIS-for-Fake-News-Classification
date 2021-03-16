@@ -5,6 +5,7 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
+import GUI.GUI;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
@@ -28,20 +29,24 @@ public class Controller {
     public ArrayList<Antigen> testing_antigens; // antigens used for testing (this iteration)
     public ArrayList<Antibody> worst_performing_abs;
 
-    private final int k = 3;   // k-fold cross validation split
-    private final double antibody_ratio = 0.6;
-    private final int generations = 300;
+    public final int k = 3;   // k-fold cross validation split
+    public final double antibody_ratio = 0.7;
+    public final double max_antibody_replacement_ratio = 0.25;
+    public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
+    public final double RR_radius_mutation_probability = 1/((double) this.number_of_features);
+    public final int generations = 300;
+    public final double antibody_removal_threshold = 0.001; // the fitness value threshold for removing anitbodies
 
-    private final Dataset dataset = IRIS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
-    private final int max_lines = 2000;
-    private final int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
+    public final Dataset dataset = SPIRALS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
+    public final int max_lines = 2000;
+    public final int number_of_features = 2; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
 
     private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
     // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
     // FEATURE_NEGATION_WORDS_TF, FEATURE_EXCLUSIVE_WORDS_TF, FEATURE_SPECIAL_CHARACTERS, FEATURE_CAPITAL_LETTERS,
     // FEATURE_GRAMMAR, FEATURE_HEADLINE_WEIGHTING, FEATURE_PRECENCE_OF_NUMBERS, FEATURE_NLP = false;
 
-    public void run() throws FileNotFoundException, URISyntaxException {
+    public void run() throws Exception {
         Parser parser = new Parser(this.dataset, this.max_lines + 1); // + 1 because first line are headers only
 
         List<List<String>> list = parser.getData();
@@ -109,6 +114,20 @@ public class Controller {
 
             for (Antibody ab : this.antibodies) {
                 ab.RR_radius = 100;
+
+                /*
+                Random rand = new Random();
+
+                while (true) {
+                    // Set antibody RR radius to euclidean distance to RANDOM ag of SAME class
+                    int random_index = rand.nextInt(this.training_antigens.size());
+
+                    if (this.training_antigens.get(random_index).true_class.equals(ab.true_class)) {
+                        ab.RR_radius = aff.CalculateDistance(this.training_antigens.get(random_index).feature_list, ab.feature_list) + 0.001;
+                        break;
+                    }
+                }
+                */
                 for (Antigen ag : antigens) {
                     if (!ag.true_class.equals(ab.true_class)) {
                         // Set antibody RR radius to euclidean distance to closest ag of DIFFERENT class (but not including the ag)
@@ -116,7 +135,6 @@ public class Controller {
                     }
                 }
             }
-
 
             List<Antibody> clones = new ArrayList<>();
             List<Antibody> abs_to_be_deleted = new ArrayList<>();
@@ -127,7 +145,7 @@ public class Controller {
 
                 clones.clear();
 
-                double reproduction_ratio = 0.25 * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * 1.5));
+                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * 1.5));
                 int number_of_new_antibodies = (int) (reproduction_ratio * this.antibodies.size());
 
                 if (number_of_new_antibodies < 1) {
@@ -158,6 +176,101 @@ public class Controller {
 
                 int antibody_clones_left = number_of_new_antibodies;
 
+
+/*
+                int number_of_classes = training_antigens.get(0).number_of_classes;
+                String[] classes = training_antigens.get(0).classes;
+
+                List<List<Antibody>> parents = new ArrayList<>();
+                List<List<Antibody>> children = new ArrayList<>();
+
+
+                for (int clss=0; clss<number_of_classes; clss++) {
+                    List<Antibody> class_parents = new ArrayList<>();
+
+                    for (Antibody ab : this.antibodies) {
+                        if (classes[clss].equals(ab.true_class)) {
+                            class_parents.add(ab);
+                        }
+                    }
+
+                    parents.add(class_parents);
+                }
+
+                for (int clss=0; clss<number_of_classes; clss++) {
+
+                    int children_per_class = number_of_new_antibodies/number_of_classes;
+
+                    HashMap<Integer, Double> fitnesses1 = new HashMap<>();
+                    int idx = 0;
+
+                    for (Antibody ab : parents.get(clss)) {
+                        fitnesses1.put(idx, ab.fitness);
+                        idx++;
+                    }
+
+                    if (children_per_class % 2 != 0) children_per_class++;
+                    List<Antibody> class_children = new ArrayList<>();
+
+                    while (children_per_class > 0) {
+                        int max_key = Collections.max(fitnesses1.entrySet(), Map.Entry.comparingByValue()).getKey();
+                        fitnesses1.remove(max_key);
+
+                        int max_key2 = Collections.max(fitnesses1.entrySet(), Map.Entry.comparingByValue()).getKey();
+                        fitnesses1.remove(max_key2);
+
+                        class_children.add(new Antibody(parents.get(clss).get(max_key)));
+
+                        Random rand = new Random();
+
+                        int split1 = rand.nextInt(this.number_of_features-1);
+                        int split2 = Math.min(rand.nextInt(this.number_of_features-1) + split1, this.number_of_features-1);
+
+                        double[] feature_vals1 = new double [split1];
+                        double[] feature_vals2 = new double [split2 - split1];
+                        double[] feature_vals3 = new double [this.number_of_features - split2];
+
+                        for (int j=0; j<split1; j++) {
+                            feature_vals1[j] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+                        for (int j=split1; j<split2; j++) {
+                            feature_vals2[j-split1] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+                        for (int j=split2; j<this.number_of_features; j++) {
+                            feature_vals2[j-split2] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+
+
+                        int length = feature_vals1.length + feature_vals2.length + feature_vals3.length;
+                        double[] all_feature_vals = new double[length];
+                        int pos = 0;
+
+                        for (double element : feature_vals1) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+                        for (double element : feature_vals2) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+                        for (double element : feature_vals3) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+
+                        class_children.get(class_children.size() - 1).feature_list = all_feature_vals;
+
+                        children_per_class--;
+                    }
+
+                    for (Antibody child : class_children) {
+                        child.mutate(1/(1 + (double) this.number_of_features), 1/(1 + (double) this.number_of_features));
+                    }
+
+                    children.add(class_children);
+                }
+*/
+
                 while (antibody_clones_left > 0) {
                     int max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
                     fitnesses.remove(max_key);
@@ -166,10 +279,8 @@ public class Controller {
                 }
 
                 for (Antibody clone : clones) {
-                    //System.out.println("\nAntibody RR radius: " + clone.RR_radius);
-                    //System.out.println("Antibody feature list: " + Arrays.toString(clone.feature_list));
                     clone.reset();
-                    clone.mutate(1/(1 + (double) this.number_of_features), 1/(1 + (double) this.number_of_features));
+                    clone.mutate(this.feature_vector_mutation_probability, this.RR_radius_mutation_probability);
                 }
 
                 fitnesses.clear();
@@ -198,281 +309,18 @@ public class Controller {
 
                 // Add the new clones
                 this.antibodies.addAll(clones);
+            }
 
 
+            for (int ab_idx=0; ab_idx<this.antibodies.size(); ab_idx++) {
+                // remove abs with zero fitness
+                this.antibodies.get(ab_idx).findConnectedAntigens(this.training_antigens);
+                this.antibodies.get(ab_idx).calculateFitness(this.training_antigens);
 
-                /*
-                this.candidate_antibodies.clear();
-
-                int rand = ThreadLocalRandom.current().nextInt(0, this.training_antigens.size() - 1);
-                Antigen random_antigen = this.training_antigens.get(rand); // get random antigen used for training this generation
-
-                HashMap<Integer, Double> affinities = new HashMap<>();
-                ArrayList<Antibody> clones = new ArrayList<>();
-
-                int antibody_index = 0;
-
-                for (Antibody memory_ab : this.antibodies) {
-                    if (memory_ab.true_class.equals(random_antigen.true_class)) {
-
-                        affinities.put(antibody_index, 1/aff.CalculateDistance(random_antigen.feature_list, memory_ab.feature_list));
-                        // burde jeg sjekke om innenfor RR radius?
-                        // affinity blir null her, om utenfor RR
-                    }
-                    antibody_index++;
+                if (this.antibodies.get(ab_idx).fitness < this.antibody_removal_threshold) {
+                    this.antibodies.remove(this.antibodies.get(ab_idx));
+                    System.out.println("REMOVE");
                 }
-
-                int number_of_antibodies_to_reproduce = (int) Math.min(this.antibody_reproduction_ratio*this.antibodies.size(), affinities.size());
-                int rank = 1; // the rank of the antibody (according to affinity to antigen)
-                double mutation_prob; // will be calculated according to rank
-
-                while (number_of_antibodies_to_reproduce > 0) {
-                    int max_index = Collections.max(affinities.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    int number_of_clones = (int) Math.ceil((this.number_of_antibody_clones/(double) rank)); // from CLONALG, but somewhat adapted
-
-                    while (number_of_clones > 0) {
-                        Antibody clone = new Antibody(this.antibodies.get(max_index));
-                        clone.reset();
-                        mutation_prob = Math.min(0.7, (1/((double) (this.number_of_features))) + ((double) (rank) - 1)/affinities.size());
-                        clone.mutate(mutation_prob, mutation_prob);
-                        clone.setParentIndex(max_index);
-                        clones.add(clone);
-
-                        number_of_clones--;
-                    }
-
-                    affinities.remove(max_index);
-                    number_of_antibodies_to_reproduce--;
-                    rank++;
-                }
-
-                affinities.clear();
-                int clone_index = 0;
-                for (Antibody clone : clones) {
-                    affinities.put(clone_index, 1/aff.CalculateDistance(random_antigen.feature_list, clone.feature_list));
-                    clone_index++;
-                }
-
-                int remaining_clones = Math.min((int) (this.antibody_replacement_ratio*this.antibodies.size()), clones.size());
-
-                while (remaining_clones > 0) {
-                    // Add the best performing clones to the candidate pool
-                    int max_index = Collections.max(affinities.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    this.candidate_antibodies.add(clones.get(max_index));
-                    affinities.remove(max_index);
-                    remaining_clones--;
-                }
-
-                affinities.clear();
-                clone_index = 0;
-                for (Antibody clone : this.candidate_antibodies) {
-                    int matches = 0;
-                    double cumulative_affinities = 0;
-                    for (Antigen ag : this.training_antigens) {
-                        if (clone.true_class.equals(ag.true_class)) {
-                            double affinity = 1/aff.CalculateDistance(ag.feature_list, clone.feature_list);
-                            if (affinity > 0) {
-                                // if inside RR and same class
-                                cumulative_affinities += affinity;
-                                matches++;
-                            }
-                        }
-                    }
-                    affinities.put(clone_index, cumulative_affinities/(double) (matches)); // this is the average affinity to same-class antigens within the RR of the clone
-                    clone_index++;
-                }
-
-                List<Antibody> clones_to_be_removed = new ArrayList<>();
-                clone_index = 0;
-                int[] antigen_indices = new int[this.candidate_antibodies.size()];
-
-                for (Antibody clone : this.candidate_antibodies) {
-                    int matches = 0;
-                    int antigen_index = 0;
-                    for (Antigen ag : this.training_antigens) {
-                        if ((1/aff.CalculateDistance(ag.feature_list, clone.feature_list) > affinities.get(clone_index))
-                                && (!clone.true_class.equals(ag.true_class))) {
-                            // if different class and higher affinity than average affinity to same-class antigens
-                            System.out.println("Other-class antigen closer than average distance to same-class!");
-                            matches++;
-                            if (matches > 1) break;
-                            antigen_indices[clone_index] = antigen_index;
-                        }
-                        antigen_index++;
-                    }
-                    if (matches > 1) clones_to_be_removed.add(this.candidate_antibodies.get(clone_index));
-                    else if (matches == 1) this.training_antigens.remove(antigen_indices[clone_index]); // consider the antigen as noise/outlier and delete from training set
-                    clone_index++;
-                }
-
-                for (Antibody clone : clones_to_be_removed) {
-                    this.candidate_antibodies.remove(clone);
-                }
-
-                for (Antibody candidate : this.candidate_antibodies) {
-                    Antibody parent = this.antibodies.get(candidate.parent_index);
-
-                    if (1/aff.CalculateDistance(random_antigen.feature_list, parent.feature_list) < 1/aff.CalculateDistance(random_antigen.feature_list, candidate.feature_list)) {
-                        // replace the parent
-                        this.antibodies.remove(candidate.parent_index);
-                        this.antibodies.add(candidate);
-                    }
-                }
-
-                HashMap<String, Integer> class_distribution = new HashMap<>();
-                String[] keys = new String[this.number_of_features];
-                int key_idx = 0;
-
-                for (Antibody ab : this.antibodies) {
-                    if (class_distribution.containsKey(ab.true_class)) {
-                        int temp = class_distribution.get(ab.true_class);
-                        class_distribution.remove(ab.true_class);
-                        class_distribution.put(ab.true_class, temp+1);
-                    }
-                    else {
-                        class_distribution.put(ab.true_class, 1);
-                        keys[key_idx] = ab.true_class;
-                        key_idx++;
-                    }
-                }
-
-                if (Math.random() > 0.3) {
-                    // Replace the poorest-performing antibody (in terms of affinity to the random ag) with a new random one
-
-                    HashMap<Integer, Double> memory_ab_affinities = new HashMap<>();
-                    int idx = 0;
-
-                    String min_class = class_distribution.entrySet().stream().filter(p -> Arrays.asList(keys).contains(p.getKey())).min(Comparator.comparingInt(Map.Entry::getValue)).get().getKey();
-
-                    for (Antibody ab : this.antibodies) {
-                        if (ab.true_class.equals(random_antigen.true_class)) {
-                            memory_ab_affinities.put(idx, 1/aff.CalculateDistance(random_antigen.feature_list, ab.feature_list));
-                        }
-                        idx++;
-                    }
-
-                    int min_index = Collections.min(memory_ab_affinities.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    if (!this.antibodies.get(min_index).true_class.equals(min_class)) {
-                        this.antibodies.remove(min_index);
-                        rand = ThreadLocalRandom.current().nextInt(0, this.training_antigens.size() - 1);
-                        this.antibodies.add(new Antibody(this.training_antigens.get(rand)));
-                        this.antibodies.get(this.antibodies.size()-1).random(this.training_antigens);
-                    }
-                }
-                */
-
-
-                /*
-                for (int antibody_index = 0; antibody_index < this.antibodies.size(); antibody_index++) {
-                    int rounds_without_improvement = 0;
-
-                    for (int iteration = 0; iteration < this.iterations; iteration++) {
-                        double best_score = 0;
-
-                        for (Antigen antigen : this.training_antigens) {
-                            // First we need to find the current connected antibodies to every antigen,
-                            // as this information is used in the antibody fitness calculation
-                            antigen.findConnectedAntibodies(this.antibodies);
-                        }
-
-                        this.antibodies.get(antibody_index).calculateFitness(this.training_antigens);
-
-                        Antibody[] antibody_clones = new Antibody[number_of_antibody_clones]; // the clones of the specific, single antibody
-
-                        for (int index = 0; index < number_of_antibody_clones; index++) {
-                            // Generate, mutate and calculate fitness of the antibody clones,
-                            // the best performing one replaces the parent, if the fitness value is better
-                            // (could also do as in AISLFS and have the best-performing clone replace the parent regardless)
-                            antibody_clones[index] = new Antibody(this.antibodies.get(antibody_index));
-                        }
-
-                        int clone_number = 0;
-                        int best_clone_index = (int) (Math.random() * (number_of_antibody_clones - 1));
-                        best_score = this.antibodies.get(antibody_index).fitness; // initialised to the parent's fitness
-
-                        double[] antibody_fitnesses = new double[this.antibodies.size()];
-                        int idx = 0;
-                        for (Antibody ab : this.antibodies) {
-                            antibody_fitnesses[idx] = ab.fitness;
-                            idx++;
-                        }
-
-                        Arrays.sort(antibody_fitnesses);
-                        double mutation_prob = 0.7; // initialised
-
-                        for (int index = 0; index < antibody_fitnesses.length; index++) {
-                            if (this.antibodies.get(antibody_index).fitness == antibody_fitnesses[index]) {
-                                // We find the fitness of the current antibody, compared to the other antibodies
-                                // Mutate clones inversely proportional to fitness of parent (compared to the other antibodies)
-
-                                mutation_prob = 1 - (double) index / (antibody_fitnesses.length - 1);
-
-                                break;
-                            }
-                        }
-
-                        for (Antibody clone : antibody_clones) {
-                            // fitness value is saved to member variable, note: we don't need to call findConnectedAntigens (as this is called within calculateFitness)
-                            clone.mutate(mutation_prob, mutation_prob * 0.7);
-                            clone.calculateFitness(this.training_antigens);
-
-                            if (clone.fitness >= best_score) {
-                                // equal or greater fitness (not just greater) to avoid local optima, unable to escape
-                                best_score = clone.fitness;
-                                best_clone_index = clone_number;
-                            }
-
-                            clone_number++;
-                        }
-
-                        if (best_score >= this.antibodies.get(antibody_index).fitness) {
-                            // Replace the parent
-                            this.antibodies.remove(this.antibodies.get(antibody_index));
-                            this.antibodies.add(new Antibody(antibody_clones[best_clone_index])); // NOTE, may lead to local optima
-                            if (best_score > this.antibodies.get(antibody_index).fitness)
-                                rounds_without_improvement = 0;
-                            else {
-                                rounds_without_improvement++;
-                            }
-                        } else {
-                            // no improvement among clones, this round
-                            rounds_without_improvement++;
-                        }
-
-                        if (rounds_without_improvement > this.allowed_iterations_without_improvement) {
-                            //System.out.println("No improvement in " + rounds_without_improvement + " rounds. Skipping to next antibody.");
-                            break;
-                        }
-                    }
-                }
-
-                worst_performing_abs.clear();
-
-                for (int rmv = 0; rmv < Math.floor(this.antibody_removal_ratio * this.antibodies.size()); rmv++) {
-                    worst_performing_abs.add(this.antibodies.get(rmv));
-                }
-
-                for (Antibody ab : this.antibodies) {
-                    int worst_idx = this.getIndexOfMin(worst_performing_abs);
-                    double worst_fitness = worst_performing_abs.get(worst_idx).fitness;
-
-                    if (ab.fitness < worst_fitness) {
-                        worst_performing_abs.remove(worst_idx);
-                        worst_performing_abs.add(ab);
-                    }
-                }
-
-                this.antibodies.removeAll(worst_performing_abs);
-
-                for (int new_ab_idx = 0; new_ab_idx < worst_performing_abs.size(); new_ab_idx++) {
-                    Antibody new_ab = new Antibody(this.antibodies.get((int) (Math.random() * this.antibodies.size())));
-                    new_ab.random();
-                    this.antibodies.add(new_ab);
-                }
-                 */
-
-
-
             }
 
             //-----------------Calculate accuracy, on training set------------------
@@ -511,7 +359,6 @@ public class Controller {
             System.out.println("--------------------------------------\n");
 
 
-
             /*
             ////////////////// DEBUG
             double distance = 0;
@@ -526,7 +373,6 @@ public class Controller {
             //////////////////
             */
         }
-
 
         //----------Calculate total accuracy------------
         double total_acc = 0;

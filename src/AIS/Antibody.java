@@ -11,13 +11,14 @@ import java.util.Random;
 public class Antibody {
     public String true_class;
     public String id;
-    public int number_of_classes = 2;   // number of classes
+    public int number_of_classes;   // number of classes
     public double RR_radius;
     public double[] feature_list; // note, length not equal to raw_list - as these are the floating feature values
     public List<Antigen> connected_antigens; // the antigens which this antibody is connected to (within RR)
     public List<Double> affinities; // the affinities to the antigens (must be in the same order as antigens)
     public double fitness;
     public double correct_AG_interactions;
+    public double weighted_accuracy;
     public double single_aff; // the affinity to a single antigen
     public Dataset dataset;
     public int parent_index;
@@ -38,6 +39,7 @@ public class Antibody {
 
         this.connected_antigens = new ArrayList<>();
         this.affinities = new ArrayList<>();
+        this.number_of_classes = antigen.number_of_classes;
     }
 
     public Antibody(Antibody antibody) {
@@ -103,7 +105,6 @@ public class Antibody {
             double ag_affinities = 0;
             double total_affinities = 0;
             double AB_interactions = 0;
-            double weighted_accuracy = 0;
 
             for (double affinity : this.affinities) {
                 // Sum up all the affinities to connected antigens
@@ -130,7 +131,7 @@ public class Antibody {
                 ag_idx++;
             }
 
-            weighted_accuracy = (this.correct_AG_interactions)/(total_affinities);  // Apply Laplacian smoothing, from VALIS (or not)
+            this.weighted_accuracy = (2 + this.correct_AG_interactions)/(this.number_of_classes + total_affinities);  // Apply Laplacian smoothing, from VALIS (or not) - ser ut som du får bedre resultater uten
 
             this.fitness = ((sharing_factor*weighted_accuracy)/(total_affinities));
         }

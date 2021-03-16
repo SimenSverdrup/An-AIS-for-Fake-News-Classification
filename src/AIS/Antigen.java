@@ -21,7 +21,7 @@ public class Antigen {
     public String[] spirals_classes = {"0", "1", "2"};
     public String[] diabetes_classes = {"0", "1"};
 
-
+    public int number_of_classes;
     public String predicted_class;  // the predicted class of the antigen, after all antibodies have voted and decided
     public double[] class_vote;
     public double average_affinity;
@@ -64,13 +64,14 @@ public class Antigen {
                 this.headline = record.get(3); // headline
                 this.raw_text = record.get(6); // full text
                 this.sources = record.get(4).split(", ");
-
+                this.number_of_classes = 2;
                 parseSources();
                 tokenizeText();
             }
             case FAKEDDIT -> {
                 // TODO
                 this.classes = this.fake_news_classes.clone();
+                this.number_of_classes = 2;
             }
             case WINE -> {
                 // WINE dataset has class label at first index
@@ -79,6 +80,7 @@ public class Antigen {
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index+1));
                 }
+                this.number_of_classes = 3;
             }
             case IRIS -> {
                 this.classes = this.iris_classes.clone();
@@ -86,6 +88,7 @@ public class Antigen {
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index));
                 }
+                this.number_of_classes = 3;
             }
             case SPIRALS -> {
                 this.classes = this.spirals_classes.clone();
@@ -93,6 +96,7 @@ public class Antigen {
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index));
                 }
+                this.number_of_classes = 3;
             }
             case DIABETES -> {
                 this.classes = this.diabetes_classes.clone();
@@ -100,6 +104,7 @@ public class Antigen {
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index));
                 }
+                this.number_of_classes = 2;
             }
         }
         this.class_vote = new double[this.classes.length];
@@ -163,7 +168,7 @@ public class Antigen {
         for (Antibody ab : this.connected_antibodies) {
             for (int i=0; i<this.classes.length; i++) {
                 if (ab.true_class.equals(this.classes[i])) {
-                    this.class_vote[i] += this.affinities.get(index);
+                    this.class_vote[i] += this.affinities.get(index);//*ab.weighted_accuracy;
                 }
             }
             index++;
