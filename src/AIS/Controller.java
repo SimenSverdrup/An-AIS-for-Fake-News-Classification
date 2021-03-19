@@ -20,6 +20,8 @@ import static Dataset.Dataset.*;
 public class Controller {
     public double total_accuracy;
     public double[] accuracies;
+    public double[][] generation_accuracies;
+    public double[] final_generation_accuracies;
     public Antigen[] antigens; // all antigens
     public ArrayList<Antibody> antibodies;
     public ArrayList<Antibody> candidate_antibodies;
@@ -32,14 +34,15 @@ public class Controller {
     public final int k = 3;   // k-fold cross validation split
     public final double antibody_ratio = 0.7;
     public final double max_antibody_replacement_ratio = 0.25;
+    public final double antibody_replacement_decrease_factor = 1.5;
     public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
     public final double RR_radius_mutation_probability = 1/((double) this.number_of_features);
-    public final int generations = 300;
-    public final double antibody_removal_threshold = 0.001; // the fitness value threshold for removing anitbodies
+    public final int generations = 150;
+    public final double antibody_removal_threshold = 0.05; // the fitness value threshold for removing antibodies
 
-    public final Dataset dataset = SPIRALS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
+    public final Dataset dataset = IRIS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
     public final int max_lines = 2000;
-    public final int number_of_features = 2; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
+    public final int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
 
     private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
     // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
@@ -59,6 +62,8 @@ public class Controller {
         this.antibodies = new ArrayList<>();
         this.candidate_antibodies = new ArrayList<>();
         this.worst_performing_abs = new ArrayList<>();
+        this.generation_accuracies = new double[k][this.generations];
+        this.final_generation_accuracies = new double[this.generations];
 
         int i = 0;
         for (List<String> record : list) {
@@ -115,8 +120,8 @@ public class Controller {
             for (Antibody ab : this.antibodies) {
                 ab.RR_radius = 100;
 
-                /*
-                Random rand = new Random();
+
+                /*Random rand = new Random();
 
                 while (true) {
                     // Set antibody RR radius to euclidean distance to RANDOM ag of SAME class
@@ -145,13 +150,13 @@ public class Controller {
 
                 clones.clear();
 
-                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * 1.5));
+                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * this.antibody_replacement_decrease_factor));
                 int number_of_new_antibodies = (int) (reproduction_ratio * this.antibodies.size());
 
-                if (number_of_new_antibodies < 1) {
-                    System.out.println("New antibody rate too low. Breaking out of loop.");
-                    break;
-                }
+                //if (number_of_new_antibodies < 1) {
+                //    System.out.println("New antibody rate too low. Breaking out of loop.");
+                //    break;
+                //}
 
                 //System.out.println("Number of new antibodies this generation: " + number_of_new_antibodies);
 
@@ -309,6 +314,38 @@ public class Controller {
 
                 // Add the new clones
                 this.antibodies.addAll(clones);
+
+
+
+
+                ///////////////// For the accuracy plot:
+                this.testing_antigens.clear();
+                this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+                this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
+                ArrayList<Antibody> antibodies_temp = new ArrayList<>();
+
+                for (Antibody ab : this.antibodies) {
+                    antibodies_temp.add(new Antibody(ab));
+                }
+
+                for (Antibody ab : antibodies_temp) {
+                    ab.findConnectedAntigens(this.testing_antigens);
+                }
+
+                double correct_predictions = 0;
+
+                for (Antigen ag : this.testing_antigens) {
+                    ag.findConnectedAntibodies(antibodies_temp);
+                    ag.predictClass(antibodies_temp);
+
+                    if (ag.true_class.equals(ag.predicted_class)) {
+                        correct_predictions++;
+                    }
+                }
+
+                this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
+                /////////////////
             }
 
 
@@ -316,6 +353,8 @@ public class Controller {
                 // remove abs with zero fitness
                 this.antibodies.get(ab_idx).findConnectedAntigens(this.training_antigens);
                 this.antibodies.get(ab_idx).calculateFitness(this.training_antigens);
+                System.out.println("Ab fitness: " + this.antibodies.get(ab_idx).fitness);
+
 
                 if (this.antibodies.get(ab_idx).fitness < this.antibody_removal_threshold) {
                     this.antibodies.remove(this.antibodies.get(ab_idx));
@@ -384,6 +423,13 @@ public class Controller {
         System.out.println("\nTotal accuracy: " + total_acc/this.accuracies.length);
 
 
+        // Calculate accuracy for every generation, averaged for every k
+        for (int gen=0; gen<this.generations; gen++) {
+            for (int index=0; index<k; index++) {
+                this.final_generation_accuracies[gen] += this.generation_accuracies[index][gen];
+            }
+            this.final_generation_accuracies[gen] = this.final_generation_accuracies[gen]/k;
+        }
         // Algorithm:
         // Extract features
         // Normalise features (AIRS claims that the exact normalisation function doesn't matter, but within [0,1])

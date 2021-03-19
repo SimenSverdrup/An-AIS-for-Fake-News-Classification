@@ -95,7 +95,6 @@ public class Antibody {
         this.findConnectedAntigens(antigens); // we fill up this.affinities and this.connected_antigens here
         int number_of_connected_antigens = this.connected_antigens.size();
 
-
         if (number_of_connected_antigens == 0) {
             this.fitness = 0.0;
         }
