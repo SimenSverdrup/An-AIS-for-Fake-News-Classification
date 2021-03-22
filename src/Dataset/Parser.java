@@ -13,9 +13,11 @@ public class Parser {
     public static final String FAKENEWSNET_TRAIN_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_train.csv";
     public static final String FAKENEWSNET_TEST_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_test.csv";
     public static final String FAKEDDIT_PATH = "";
+    public static final String IRIS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\iris.data";
+    public static final String WINE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\wine.data";
+    public static final String SPIRALS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\spirals.txt";
+    public static final String DIABETES_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\diabetes.csv";
     public String path = "";
-
-    // Remember that the first line of data only contains the headers!
     private List<List<String>> data;
 
 
@@ -23,12 +25,34 @@ public class Parser {
         // Constructor for default separator (comma)
 
         switch(dataset) {
-            case FAKENEWSNET -> this.path = FAKENEWSNET_TRAIN_PATH;
-            case FAKEDDIT -> this.path = FAKEDDIT_PATH;
+            case FAKENEWSNET -> {
+                this.path = FAKENEWSNET_TRAIN_PATH;
+                this.data = parseFNN(this.path, maxLines);
+            }
+            case FAKEDDIT -> {
+                this.path = FAKEDDIT_PATH;
+            }
+            case IRIS -> {
+                this.path = IRIS_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+                this.data.remove(this.data.size()-1); // remove last row (empty)
+            }
+            case WINE -> {
+                this.path = WINE_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+            case SPIRALS -> {
+                this.path = SPIRALS_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+            case DIABETES -> {
+                this.path = DIABETES_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+
             default -> this.path = "";
         }
 
-        this.data = parseFNN(this.path, maxLines);
     }
 
     public static List<List<String>> parseFNN(String path, int maxLines) throws FileNotFoundException {
@@ -39,6 +63,38 @@ public class Parser {
         // TODO: implement parser for the Fakeddit dataset
 
         return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
+    }
+
+    public static List<List<String>> parseBenchmarkDatasets(String path, int maxLines) throws FileNotFoundException {
+        InputStream input = null;
+        input = new FileInputStream(path);
+        BufferedReader reader = null;
+        List<List<String>> CSV_list = new ArrayList<List<String>>();
+        String line = null;
+        StringBuilder record = new StringBuilder();
+        int lineNumber = 0;
+
+        // Parse
+        try {
+            reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            while (((line = reader.readLine()) != null) && (lineNumber < maxLines)) {
+                record.append(line);
+                CSV_list.add(parseRecord(record.toString(), ','));
+                record = new StringBuilder(); // reset
+                lineNumber++;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null)
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+        }
+
+        return CSV_list;
     }
 
 
@@ -62,7 +118,7 @@ public class Parser {
                 record.append(line);
                 if (line.endsWith(",fake") || line.endsWith(",real") || line.endsWith("label_fnn")) {
                     // end of record
-                    CSV_list.add(parseRecord(record.toString(), separator));
+                    CSV_list.add(parseRecord(record.toString(), ','));
                     record = new StringBuilder(); // reset
                     lineNumber++;
                 }

@@ -2,5 +2,9 @@ package Dataset;
 
 public enum Dataset {
     FAKENEWSNET,
-    FAKEDDIT;
+    FAKEDDIT,
+    IRIS,
+    WINE,
+    SPIRALS,
+    DIABETES
 }

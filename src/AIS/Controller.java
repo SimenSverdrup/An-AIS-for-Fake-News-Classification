@@ -5,153 +5,431 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
+import GUI.GUI;
+import javafx.application.Application;
+import javafx.stage.Stage;
 
 import java.io.FileNotFoundException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static Dataset.Dataset.FAKENEWSNET;
+import static Dataset.Dataset.*;
+
 
 public class Controller {
-    private final int max_lines = 1000;
-    private final int k = 10;   // k-fold cross validation split
-    private final int number_of_antibody_clones = 15; // the amount of clones for each antibody
-    private final double RR_radius = 0.1;
-    private final Dataset dataset = FAKENEWSNET;
-    private final double antibody_ratio = 0.08;
-    private final int number_of_features = 1;
-    private final int antibody_training_cycles = 50;
+    public double total_accuracy;
+    public double[] accuracies;
+    public double[][] generation_accuracies;
+    public double[] final_generation_accuracies;
+    public Antigen[] antigens; // all antigens
+    public ArrayList<Antibody> antibodies;
+    public ArrayList<Antibody> candidate_antibodies;
+
+    public Antigen[][] antigens_split; // antigens split into k separate arrays, for k-fold cross-validation testing
+    public ArrayList<Antigen> training_antigens; // antigens used for training (this iteration)
+    public ArrayList<Antigen> testing_antigens; // antigens used for testing (this iteration)
+    public ArrayList<Antibody> worst_performing_abs;
+
+    public final int k = 3;   // k-fold cross validation split
+    public final double antibody_ratio = 0.7;
+    public final double max_antibody_replacement_ratio = 0.25;
+    public final double antibody_replacement_decrease_factor = 1.5;
+    public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
+    public final double RR_radius_mutation_probability = 1/((double) this.number_of_features);
+    public final int generations = 150;
+    public final double antibody_removal_threshold = 0.05; // the fitness value threshold for removing antibodies
+
+    public final Dataset dataset = IRIS; //FAKENEWSNET //FAKEDDIT //IRIS //SPIRALS //WINE // DIABETES (Pima Indian)
+    public final int max_lines = 2000;
+    public final int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
+
     private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
     // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
     // FEATURE_NEGATION_WORDS_TF, FEATURE_EXCLUSIVE_WORDS_TF, FEATURE_SPECIAL_CHARACTERS, FEATURE_CAPITAL_LETTERS,
     // FEATURE_GRAMMAR, FEATURE_HEADLINE_WEIGHTING, FEATURE_PRECENCE_OF_NUMBERS, FEATURE_NLP = false;
 
-
-
-    public Controller() throws FileNotFoundException, URISyntaxException {
+    public void run() throws Exception {
         Parser parser = new Parser(this.dataset, this.max_lines + 1); // + 1 because first line are headers only
 
         List<List<String>> list = parser.getData();
-        list.remove(0); // remove headers
+        if (this.dataset.equals(FAKENEWSNET)) list.remove(0); // remove headers
 
         int number_of_records = list.size();
-        Antigen[] antigens = new Antigen[number_of_records];
+        this.antigens = new Antigen[number_of_records];
+        this.training_antigens = new ArrayList<>();
+        this.testing_antigens = new ArrayList<>();
+        this.antibodies = new ArrayList<>();
+        this.candidate_antibodies = new ArrayList<>();
+        this.worst_performing_abs = new ArrayList<>();
+        this.generation_accuracies = new double[k][this.generations];
+        this.final_generation_accuracies = new double[this.generations];
 
         int i = 0;
         for (List<String> record : list) {
-            antigens[i] = new Antigen(record, number_of_features);
+            this.antigens[i] = new Antigen(record, number_of_features, this.dataset);
             i++;
         }
 
         FeatureExtractor fe = new FeatureExtractor(features_used);
-        antigens = fe.extractFeatures(antigens);
-
         Normaliser norm = new Normaliser();
-        antigens = norm.NormaliseFeatures(antigens);
+        Affinity aff = new Affinity();
 
-        Antibody[] antibodies = new Antibody[(int) Math.floor(antigens.length*antibody_ratio)];
+        // Shuffle the antigens
+        this.antigens = shuffleAntigens(this.antigens);
 
-        for (int j=0; j<antibodies.length; j++) {
-            int rand = ThreadLocalRandom.current().nextInt(0, antigens.length-1);
-            antibodies[j] = new Antibody(antigens[rand]);
-            antibodies[j].RR_radius = this.RR_radius;
-        }
-
-        Antigen[][] antigens_split = new Antigen[k][(int) Math.floor(antigens.length/(float) k)];
+        this.antigens_split = new Antigen[k][(int) Math.floor(this.antigens.length/(float) k)];
 
         for (int index=0; index<k; index++) {
-            System.arraycopy(antigens, index*antigens_split[index].length, antigens_split[index], 0, antigens_split[index].length);
+            System.arraycopy(this.antigens, index*this.antigens_split[index].length, this.antigens_split[index], 0, this.antigens_split[index].length);
         }
 
-        double[] accuracies = new double[k];
+        this.accuracies = new double[k];
 
-        for (int k = 0; k<this.k; k++) {
+        for (int k = 0; k < this.k; k++) {
             // k marks the index of the Antigen vector used for testing (this round)
+            // note that each iteration 0->k-1 are independent, with feature values calculated from scratch each iteration
 
-            for (int antibody_index=0; antibody_index<antibodies.length; antibody_index++) {
-                double best_score = 0;
+            // Copy the non-testing antigens to the training set
+            this.training_antigens.clear();
+            for (int idx=0; idx<this.k; idx++) {
+                if (idx != k) {
+                    this.training_antigens.addAll(Arrays.asList(this.antigens_split[idx]));
+                }
+            }
 
-                for (Antigen[] antigen_vector : antigens_split) {
-                    if (antigen_vector == antigens_split[k]) continue; // we don't want to use this vector for training this round, only testing
-                    boolean new_round = true; // the antibody will repeat the cloning and mutation process if a clone outperformed the parent in the previous iteration
+            // Extract features and initialise antibodies
+            if ((this.dataset != IRIS) &&
+                    (this.dataset != WINE) &&
+                    (this.dataset != SPIRALS) &&
+                    (this.dataset != DIABETES)) {
+                this.training_antigens = fe.extractFeatures(this.training_antigens); // burde disse linjene byttes om?
+            }
 
-                    while (new_round) {
-                        new_round = false;
+            this.training_antigens = norm.NormaliseFeatures(this.training_antigens);
+            this.antibodies.clear();
+            this.candidate_antibodies.clear();
 
-                        for (Antigen antigen : antigen_vector) {
-                            // First we need to find the current connected antibodies to every antigen,
-                            // as this information is used in the antibody fitness calculation
-                            antigen.findConnectedAntibodies(antibodies);
-                        }
+            for (int j=0; j<this.training_antigens.size()*antibody_ratio; j++) {
+                // Initialize antibodies using the random heuristic
+                int rand = ThreadLocalRandom.current().nextInt(0, this.training_antigens.size() - 1);
+                this.antibodies.add(new Antibody(this.training_antigens.get(rand)));
+                //this.antibodies.get(this.antibodies.size()-1).random(this.training_antigens); // randomise feature values of added antibody
+            }
 
-                        antibodies[antibody_index].calculateFitness(antigen_vector);
+            for (Antibody ab : this.antibodies) {
+                ab.RR_radius = 100;
 
-                        Antibody[] antibody_clones = new Antibody[number_of_antibody_clones]; // the clones of the specific, single antibody
 
-                        for (int index=0; index<number_of_antibody_clones; index++) {
-                            // Generate, mutate and calculate fitness of the antibody clones,
-                            // the best performing one replaces the parent, if the fitness value is better
-                            // (could also do as in AISLFS and have the best-performing clone replace the parent regardless)
-                            antibody_clones[index] = new Antibody(antibodies[antibody_index]);
-                        }
+                /*Random rand = new Random();
 
-                        int clone_number = 0;
-                        int best_clone_index = (int) (Math.random() * (number_of_antibody_clones - 1));
-                        best_score = antibodies[antibody_index].fitness; // initialised to the parent's fitness
+                while (true) {
+                    // Set antibody RR radius to euclidean distance to RANDOM ag of SAME class
+                    int random_index = rand.nextInt(this.training_antigens.size());
 
-                        for (Antibody clone : antibody_clones) {
-                            // fitness value is saved to member variable, note: we don't need to call findConnectedAntigens (as this is called within calculateFitness)
-                            clone.mutate();
-                            clone.calculateFitness(antigen_vector);
-
-                            if (clone.fitness > best_score) {
-                                best_score = clone.fitness;
-                                best_clone_index = clone_number;
-                                new_round = true;
-                            }
-
-                            clone_number++;
-                        }
-
-                        if (best_score > antibodies[antibody_index].fitness) antibodies[antibody_index] = new Antibody(antibody_clones[best_clone_index]); // NOTE, may lead to local optima
+                    if (this.training_antigens.get(random_index).true_class.equals(ab.true_class)) {
+                        ab.RR_radius = aff.CalculateDistance(this.training_antigens.get(random_index).feature_list, ab.feature_list) + 0.001;
+                        break;
+                    }
+                }
+                */
+                for (Antigen ag : antigens) {
+                    if (!ag.true_class.equals(ab.true_class)) {
+                        // Set antibody RR radius to euclidean distance to closest ag of DIFFERENT class (but not including the ag)
+                        ab.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, ab.feature_list) - 0.001, ab.RR_radius);
                     }
                 }
             }
 
+            List<Antibody> clones = new ArrayList<>();
+            List<Antibody> abs_to_be_deleted = new ArrayList<>();
+
+            // Begin the training
+            for (int generation=1; generation<=this.generations; generation++) {
+                System.out.println("Generation " + generation + "/" + (this.generations));
+
+                clones.clear();
+
+                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * this.antibody_replacement_decrease_factor));
+                int number_of_new_antibodies = (int) (reproduction_ratio * this.antibodies.size());
+
+                //if (number_of_new_antibodies < 1) {
+                //    System.out.println("New antibody rate too low. Breaking out of loop.");
+                //    break;
+                //}
+
+                //System.out.println("Number of new antibodies this generation: " + number_of_new_antibodies);
+
+                for (Antigen ag : this.training_antigens) {
+                    // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
+                    ag.findConnectedAntibodies(this.antibodies);
+                }
+
+                for (Antibody ab : this.antibodies) {
+                    ab.findConnectedAntigens(this.training_antigens);
+                    ab.calculateFitness(this.training_antigens);
+                }
+
+                HashMap<Integer, Double> fitnesses = new HashMap<>();
+
+                int ab_index = 0;
+
+                for (Antibody ab : this.antibodies) {
+                    fitnesses.put(ab_index, ab.fitness);
+                    ab_index++;
+                }
+
+                int antibody_clones_left = number_of_new_antibodies;
+
+
+/*
+                int number_of_classes = training_antigens.get(0).number_of_classes;
+                String[] classes = training_antigens.get(0).classes;
+
+                List<List<Antibody>> parents = new ArrayList<>();
+                List<List<Antibody>> children = new ArrayList<>();
+
+
+                for (int clss=0; clss<number_of_classes; clss++) {
+                    List<Antibody> class_parents = new ArrayList<>();
+
+                    for (Antibody ab : this.antibodies) {
+                        if (classes[clss].equals(ab.true_class)) {
+                            class_parents.add(ab);
+                        }
+                    }
+
+                    parents.add(class_parents);
+                }
+
+                for (int clss=0; clss<number_of_classes; clss++) {
+
+                    int children_per_class = number_of_new_antibodies/number_of_classes;
+
+                    HashMap<Integer, Double> fitnesses1 = new HashMap<>();
+                    int idx = 0;
+
+                    for (Antibody ab : parents.get(clss)) {
+                        fitnesses1.put(idx, ab.fitness);
+                        idx++;
+                    }
+
+                    if (children_per_class % 2 != 0) children_per_class++;
+                    List<Antibody> class_children = new ArrayList<>();
+
+                    while (children_per_class > 0) {
+                        int max_key = Collections.max(fitnesses1.entrySet(), Map.Entry.comparingByValue()).getKey();
+                        fitnesses1.remove(max_key);
+
+                        int max_key2 = Collections.max(fitnesses1.entrySet(), Map.Entry.comparingByValue()).getKey();
+                        fitnesses1.remove(max_key2);
+
+                        class_children.add(new Antibody(parents.get(clss).get(max_key)));
+
+                        Random rand = new Random();
+
+                        int split1 = rand.nextInt(this.number_of_features-1);
+                        int split2 = Math.min(rand.nextInt(this.number_of_features-1) + split1, this.number_of_features-1);
+
+                        double[] feature_vals1 = new double [split1];
+                        double[] feature_vals2 = new double [split2 - split1];
+                        double[] feature_vals3 = new double [this.number_of_features - split2];
+
+                        for (int j=0; j<split1; j++) {
+                            feature_vals1[j] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+                        for (int j=split1; j<split2; j++) {
+                            feature_vals2[j-split1] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+                        for (int j=split2; j<this.number_of_features; j++) {
+                            feature_vals2[j-split2] = parents.get(clss).get(max_key).feature_list[j];
+                        }
+
+
+                        int length = feature_vals1.length + feature_vals2.length + feature_vals3.length;
+                        double[] all_feature_vals = new double[length];
+                        int pos = 0;
+
+                        for (double element : feature_vals1) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+                        for (double element : feature_vals2) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+                        for (double element : feature_vals3) {
+                            all_feature_vals[pos] = element;
+                            pos++;
+                        }
+
+                        class_children.get(class_children.size() - 1).feature_list = all_feature_vals;
+
+                        children_per_class--;
+                    }
+
+                    for (Antibody child : class_children) {
+                        child.mutate(1/(1 + (double) this.number_of_features), 1/(1 + (double) this.number_of_features));
+                    }
+
+                    children.add(class_children);
+                }
+*/
+
+                while (antibody_clones_left > 0) {
+                    int max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    fitnesses.remove(max_key);
+                    clones.add(new Antibody(this.antibodies.get(max_key)));
+                    antibody_clones_left--;
+                }
+
+                for (Antibody clone : clones) {
+                    clone.reset();
+                    clone.mutate(this.feature_vector_mutation_probability, this.RR_radius_mutation_probability);
+                }
+
+                fitnesses.clear();
+                ab_index = 0;
+
+                for (Antibody ab : antibodies) {
+                    fitnesses.put(ab_index, ab.fitness);
+                    ab_index++;
+                }
+
+                abs_to_be_deleted.clear();
+
+                while (number_of_new_antibodies > 0) {
+                    // Find antibodies in this.antibodies with poorest fitness
+                    int min_key = Collections.min(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    fitnesses.remove(min_key);
+                    abs_to_be_deleted.add(this.antibodies.get(min_key));
+
+                    number_of_new_antibodies--;
+                }
+
+                for (Antibody ab : abs_to_be_deleted) {
+                    // Remove poorest performing antibodies from this.antibodies
+                    this.antibodies.remove(ab);
+                }
+
+                // Add the new clones
+                this.antibodies.addAll(clones);
+
+
+
+
+                ///////////////// For the accuracy plot:
+                this.testing_antigens.clear();
+                this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+                this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
+                ArrayList<Antibody> antibodies_temp = new ArrayList<>();
+
+                for (Antibody ab : this.antibodies) {
+                    antibodies_temp.add(new Antibody(ab));
+                }
+
+                for (Antibody ab : antibodies_temp) {
+                    ab.findConnectedAntigens(this.testing_antigens);
+                }
+
+                double correct_predictions = 0;
+
+                for (Antigen ag : this.testing_antigens) {
+                    ag.findConnectedAntibodies(antibodies_temp);
+                    ag.predictClass(antibodies_temp);
+
+                    if (ag.true_class.equals(ag.predicted_class)) {
+                        correct_predictions++;
+                    }
+                }
+
+                this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
+                /////////////////
+            }
+
+
+            for (int ab_idx=0; ab_idx<this.antibodies.size(); ab_idx++) {
+                // remove abs with zero fitness
+                this.antibodies.get(ab_idx).findConnectedAntigens(this.training_antigens);
+                this.antibodies.get(ab_idx).calculateFitness(this.training_antigens);
+                System.out.println("Ab fitness: " + this.antibodies.get(ab_idx).fitness);
+
+
+                if (this.antibodies.get(ab_idx).fitness < this.antibody_removal_threshold) {
+                    this.antibodies.remove(this.antibodies.get(ab_idx));
+                    System.out.println("REMOVE");
+                }
+            }
+
+            //-----------------Calculate accuracy, on training set------------------
+            this.testing_antigens.clear();
+            this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+
+            if ((this.dataset != IRIS) &&
+                    (this.dataset != WINE) &&
+                    (this.dataset != SPIRALS) &&
+                    (this.dataset != DIABETES)) this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+            this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
             double correct_predictions = 0;
 
-            for (Antigen ag : antigens_split[k]) {
-                ag.findConnectedAntibodies(antibodies);
-                System.out.println("\nNumber of antibodies connected to this antigen: " + ag.connected_antibodies.size());
+            for (Antigen ag : this.testing_antigens) {
+                ag.findConnectedAntibodies(this.antibodies);
+                ag.predictClass(this.antibodies);
 
-                ag.predictClass();
+                System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
+                System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
+                System.out.println("Ag class: " + ag.true_class);
+                System.out.println("Ag predicted class: " + ag.predicted_class);
+                System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
+                System.out.println("\n");
+
+
                 if (ag.true_class.equals(ag.predicted_class)) {
                     correct_predictions++;
                 }
             }
 
-            accuracies[k] = correct_predictions/antigens_split[k].length;
+            this.accuracies[k] = correct_predictions / this.testing_antigens.size();
 
             System.out.println("\n--------------------------------------");
-            System.out.println("Accuracy for testing set k=" + k + ": " + accuracies[k]);
+            System.out.println("Accuracy for testing set k=" + k + ": " + this.accuracies[k]);
             System.out.println("--------------------------------------\n");
+
+
+            /*
+            ////////////////// DEBUG
+            double distance = 0;
+            int length = this.antibodies.get(4).feature_list.length;
+
+            for (int ids=0; ids<length; ids++) {
+                double diff = this.antibodies.get(4).feature_list[ids] - testing_antigens.get(4).feature_list[ids];
+                distance += Math.pow(diff, 2);
+            }
+
+            System.out.println("Random ab-ag distance: " + Math.sqrt(distance));
+            //////////////////
+            */
         }
 
+        //----------Calculate total accuracy------------
         double total_acc = 0;
 
-        for (double acc : accuracies) {
+        for (double acc : this.accuracies) {
             total_acc += acc;
         }
-        System.out.println("\nTotal accuracy: " + total_acc/accuracies.length);
+        this.total_accuracy = total_acc/this.accuracies.length;
+        System.out.println("\nTotal accuracy: " + total_acc/this.accuracies.length);
 
 
-        // TODO: Implementer en GUI for å se accuracy over tid og gjerne plott antibodies med RR og antigens i 2D
-        // TODO: vurder om du burde slette antigensa som også har blitt til antibodies, fra antigens
-        // TODO: lag noe bedre heuristikk for RR radius initialisering og vurder om denne burde mutere med høyere sannsynlighet
-
-
+        // Calculate accuracy for every generation, averaged for every k
+        for (int gen=0; gen<this.generations; gen++) {
+            for (int index=0; index<k; index++) {
+                this.final_generation_accuracies[gen] += this.generation_accuracies[index][gen];
+            }
+            this.final_generation_accuracies[gen] = this.final_generation_accuracies[gen]/k;
+        }
         // Algorithm:
         // Extract features
         // Normalise features (AIRS claims that the exact normalisation function doesn't matter, but within [0,1])
@@ -192,6 +470,7 @@ public class Controller {
         // (Perform apothesis of unneeded antibodies)
             // Replace the n antibodies which didn't detect a single antigen with the n least detected antigens?
             // Sort of like in AISLFS
+            // Can also remove antibodies with affinity < some value, with each other
         // Test AIS on the testing set antigens
             // For each antigen in testing set:
                 // Calculate predicted class of antigen according to some voting heuristic
@@ -199,8 +478,35 @@ public class Controller {
                 // Calculate (+plot) accuracy
     }
 
+    public Antigen[] shuffleAntigens(Antigen[] array) {
+        // Implementing Fisher–Yates shuffle, from https://stackoverflow.com/questions/1519736/random-shuffling-of-an-array
+
+        Random rnd = ThreadLocalRandom.current();
+        for (int i = array.length - 1; i > 0; i--) {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            Antigen temp = array[index];
+            array[index] = array[i];
+            array[i] = temp;
+        }
+        return array;
+    }
+
     public static boolean contains(final int[] arr, final int key) {
         return Arrays.stream(arr).anyMatch(i -> i == key);
+    }
+
+    public int getIndexOfMin(ArrayList<Antibody> data) {
+        double min = Double.MAX_VALUE;
+        int index = -1;
+        for (int i = 0; i < data.size(); i++) {
+            double f = data.get(i).fitness;
+            if (Double.compare(f, min) < 0) {
+                min = f;
+                index = i;
+            }
+        }
+        return index;
     }
 
     public void TestParser(List<List<String>> list) {
@@ -234,23 +540,23 @@ public class Controller {
         System.out.println("Old list: " + Arrays.toString(vector));
 
         Mutate mutate = new Mutate();
-        double[] vector2 = mutate.mutateVector(vector);
+        double[] vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
-        vector2 = mutate.mutateVector(vector);
+        vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
-        vector2 = mutate.mutateVector(vector);
+        vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
-        vector2 = mutate.mutateVector(vector);
+        vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
-        vector2 = mutate.mutateVector(vector);
+        vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
         System.out.println("Old value: " + 0.5);
-        double val = mutate.mutateScalar(0.5);
+        double val = mutate.mutateScalar(0.5, 0.6);
         System.out.println("New value: " + val);
     }
 

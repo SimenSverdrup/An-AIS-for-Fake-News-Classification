@@ -1,24 +1,40 @@
 package AIS;
 
+import Dataset.Dataset;
+
+import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
+import Dataset.Dataset;
 
 public class Antigen {
     public String true_class;   // the true class of the antigen
     public String id;
-    public String[] classes = {"real", "fake"};
+    public String[] classes;
+    public String[] fake_news_classes = {"real", "fake"};
+    public String[] iris_classes = {"Iris-setosa", "Iris-versicolor", "Iris-virginica"};
+    public String[] wine_classes = {"1", "2", "3"};
+    public String[] spirals_classes = {"0", "1", "2"};
+    public String[] diabetes_classes = {"0", "1"};
+
+    public int number_of_classes;
     public String predicted_class;  // the predicted class of the antigen, after all antibodies have voted and decided
     public double[] class_vote;
+    public double average_affinity;
+    public double max_affinity;
+    public double minimum_affinity;
     // length k, where k is the number of classes
     // the array will contain the cumulative voting score for each of the classes, the one with the highest value will be the predicted class
-
+    public Dataset dataset;
     public int number_of_features;
     public double[] feature_list;
     public List<Antibody> connected_antibodies; // the connected antibodies
     public List<Double> affinities; // the affinities to the antibodies (must be in the same order as antibodies)
+    public List<Double> sorted_affinities; // the affinities to the antibodies (in increasing order)
 
 
     public String[] tokenizedText;
@@ -31,74 +47,142 @@ public class Antigen {
     public String speaker;
     public String headline;
 
-    public Antigen(List<String> record, int number_of_features) {
+    public Antigen(List<String> record, int number_of_features, Dataset dataset) {
         // record is a single line in the form:
         // id,date,speaker,statement,sources,paragraph_based_content,fullText_based_content,label_fnn
-
+        this.dataset = dataset;
         this.number_of_features = number_of_features;
         this.feature_list = new double[this.number_of_features];
-        this.true_class = record.get(record.size() - 1).toLowerCase();
-        this.id = record.get(0);
 
-        this.speaker = record.get(2); // speaker
-        this.headline = record.get(3); // headline
-        this.raw_text = record.get(6); // full text
-        this.sources = record.get(4).split(", ");
+        switch (this.dataset) {
+            case FAKENEWSNET -> {
+                this.classes = this.fake_news_classes.clone();
+                this.true_class = record.get(record.size() - 1).toLowerCase();
+                this.id = record.get(0);
 
+                this.speaker = record.get(2); // speaker
+                this.headline = record.get(3); // headline
+                this.raw_text = record.get(6); // full text
+                this.sources = record.get(4).split(", ");
+                this.number_of_classes = 2;
+                parseSources();
+                tokenizeText();
+            }
+            case FAKEDDIT -> {
+                // TODO
+                this.classes = this.fake_news_classes.clone();
+                this.number_of_classes = 2;
+            }
+            case WINE -> {
+                // WINE dataset has class label at first index
+                this.classes = this.wine_classes.clone();
+                this.true_class = record.get(0); // FIRST index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index+1));
+                }
+                this.number_of_classes = 3;
+            }
+            case IRIS -> {
+                this.classes = this.iris_classes.clone();
+                this.true_class = record.get(this.number_of_features); // last index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index));
+                }
+                this.number_of_classes = 3;
+            }
+            case SPIRALS -> {
+                this.classes = this.spirals_classes.clone();
+                this.true_class = record.get(this.number_of_features); // last index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index));
+                }
+                this.number_of_classes = 3;
+            }
+            case DIABETES -> {
+                this.classes = this.diabetes_classes.clone();
+                this.true_class = record.get(this.number_of_features); // last index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index));
+                }
+                this.number_of_classes = 2;
+            }
+        }
+        this.class_vote = new double[this.classes.length];
         this.connected_antibodies = new ArrayList<>();
         this.affinities = new ArrayList<>();
-
-        this.class_vote = new double[this.classes.length];
-
-        parseSources();
-        tokenizeText();
     }
 
     public void reset() {
         // Should be called between each training iteration
 
-        if (this.connected_antibodies != null) {
-            this.connected_antibodies.clear();
-            this.affinities.clear();
-        }
+        this.connected_antibodies.clear();
+        this.affinities.clear();
     }
 
-    public void findConnectedAntibodies(Antibody[] antibodies) {
+    public void findConnectedAntibodies(ArrayList<Antibody> antibodies) {
         // Antibodies input argument is all the antibodies
         this.reset();
 
         Affinity aff = new Affinity();
 
         for (Antibody ab : antibodies) {
-            double temp = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius);
-            if (temp > 0) {
-                // The antigen is within the RR
-                this.affinities.add(temp);
+            double affinity = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius);
+            if (affinity > 0) {
+                // The antibody is within the RR
+                this.affinities.add(affinity);
                 this.connected_antibodies.add(ab);
             }
         }
 
-        //System.out.println("\nAntigen.findConnectedAntibodies, id: " + this.id);
-        //System.out.println("Antigen.findConnectedAntibodies, connected antibodies: " + this.connected_antibodies + "\n");
+        // System.out.println("\nAntigen.findConnectedAntibodies, id: " + this.id);
+        // System.out.println("Antigen.findConnectedAntibodies, connected antibodies: " + this.connected_antibodies + "\n");
     }
 
-    public void predictClass() {
+    public void calculateAffinities() {
+        double total_aff = 0;
+        double min_aff = 1;
+        double max_aff = 0;
+        int ab_idx = 0;
+
+        for (Antibody connected_ab : this.connected_antibodies) {
+            total_aff += this.affinities.get(ab_idx);
+            if (this.affinities.get(ab_idx) > max_aff) max_aff = this.affinities.get(ab_idx);
+            else if (this.affinities.get(ab_idx) < min_aff) min_aff = this.affinities.get(ab_idx);
+            ab_idx++;
+        }
+
+        this.sorted_affinities = this.affinities;
+        Collections.sort(this.sorted_affinities);
+        this.average_affinity = total_aff/this.connected_antibodies.size();
+        this.max_affinity = max_aff;
+        this.minimum_affinity = min_aff;
+    }
+
+    public void predictClass(ArrayList<Antibody> antibodies) {
         // Iterate through the connected antibodies, to determine the predicted class
         // We se a voting tally, where a vote is proportional to the affinity
 
         int index = 0;
+        Affinity aff = new Affinity();
 
         for (Antibody ab : this.connected_antibodies) {
-            if (ab.true_class.equals(this.classes[0])) {
-                // Class == real
-                this.class_vote[0] += this.affinities.get(index);
-            }
-            else if (ab.true_class.equals(this.classes[1])) {
-                // Class == fake
-                this.class_vote[1] += this.affinities.get(index);
+            for (int i=0; i<this.classes.length; i++) {
+                if (ab.true_class.equals(this.classes[i])) {
+                    this.class_vote[i] += this.affinities.get(index);//*ab.weighted_accuracy;
+                }
             }
             index++;
         }
+        if (this.connected_antibodies.size() == 0) {
+            // No antibody is connected, let the one with lowest distance/RR radius decide
+            double min_ratio = 1000;
+            for (Antibody ab : antibodies) {
+                if ((aff.CalculateDistance(this.feature_list, ab.feature_list) / ab.RR_radius) < min_ratio) {
+                    this.predicted_class = ab.true_class;
+                }
+            }
+        }
+        System.out.println("\nclasses: " + Arrays.toString(this.classes));
 
         this.predicted_class = this.classes[this.getIndexOfLargest(this.class_vote)];
     }
