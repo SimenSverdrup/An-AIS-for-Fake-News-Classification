@@ -12,25 +12,29 @@ public class Parser {
     public static final int DEFAULT_SKIP_LINES = 0;
     public static final String FAKENEWSNET_TRAIN_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_train.csv";
     public static final String FAKENEWSNET_TEST_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_test.csv";
-    public static final String FAKEDDIT_PATH = "";
+    public static final String LIAR_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\LIAR\\liar_train.csv";
     public static final String IRIS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\iris.data";
     public static final String WINE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\wine.data";
     public static final String SPIRALS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\spirals.txt";
     public static final String DIABETES_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\diabetes.csv";
     public String path = "";
     private List<List<String>> data;
+    public static boolean binary_class_LIAR; // convert 6-class to binary (2-class) classification for LIAR
 
 
-    public Parser(Dataset dataset, int maxLines) throws FileNotFoundException {
+    public Parser(Dataset dataset, int maxLines, boolean binary_class) throws FileNotFoundException {
         // Constructor for default separator (comma)
+
+        binary_class_LIAR = binary_class;
 
         switch(dataset) {
             case FAKENEWSNET -> {
                 this.path = FAKENEWSNET_TRAIN_PATH;
                 this.data = parseFNN(this.path, maxLines);
             }
-            case FAKEDDIT -> {
-                this.path = FAKEDDIT_PATH;
+            case LIAR -> {
+                this.path = LIAR_PATH;
+                this.data = parseLIAR(this.path, maxLines);
             }
             case IRIS -> {
                 this.path = IRIS_PATH;
@@ -56,13 +60,35 @@ public class Parser {
     }
 
     public static List<List<String>> parseFNN(String path, int maxLines) throws FileNotFoundException {
-        return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
+        return parseCSVtoListFNN(path, DEFAULT_SEPARATOR, maxLines);
     }
 
-    public static List<List<String>> parseFAKEDDIT(String path, int maxLines) throws FileNotFoundException {
-        // TODO: implement parser for the Fakeddit dataset
+    public static List<List<String>> parseLIAR(String path, int maxLines) throws FileNotFoundException {
+        List<List<String>> list = parseCSVtoListLIAR(path, DEFAULT_SEPARATOR, maxLines);
 
-        return parseCSVtoList(path, DEFAULT_SEPARATOR, maxLines);
+        if (binary_class_LIAR) {
+            List<List<String>> to_be_removed = new ArrayList<>();
+
+            for (List<String> line : list) {
+                switch (line.get(line.size() - 1)) {
+                    case "barely-true", "half-true" ->
+                            // remove these rows
+                            to_be_removed.add(line);
+                    case "pants-fire", "false" ->
+                            // consider these as fake
+                            line.set(line.size() - 1, "fake");
+                    case "mostly-true", "true" ->
+                            // consider these as real
+                            line.set(line.size() - 1, "real");
+                }
+            }
+
+            for (List<String> line : to_be_removed) {
+                list.remove(line);
+            }
+        }
+
+        return list;
     }
 
     public static List<List<String>> parseBenchmarkDatasets(String path, int maxLines) throws FileNotFoundException {
@@ -97,8 +123,47 @@ public class Parser {
         return CSV_list;
     }
 
+    public static List<List<String>> parseCSVtoListLIAR(String path, char separator, int maxLines) throws FileNotFoundException {
+        // Parse raw CSV file to a list of lists (2D array) of Strings
+        // Because records stretch over multiple lines in datasets, we have to do some extra work
 
-    public static List<List<String>> parseCSVtoList(String path, char separator, int maxLines) throws FileNotFoundException {
+        // Prepare
+        InputStream input = null;
+        input = new FileInputStream(path);
+        BufferedReader reader = null;
+        List<List<String>> CSV_list = new ArrayList<List<String>>();
+        String line = null;
+        StringBuilder record = new StringBuilder();
+        int lineNumber = 0;
+
+        // Parse
+        try {
+            reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            while (((line = reader.readLine()) != null) && (lineNumber < maxLines )) {
+                record.append(line);
+                if (line.endsWith(",pants-fire") || line.endsWith(",false") || line.endsWith(",barely-true") || line.endsWith(",half-true") || line.endsWith(",mostly-true") || line.endsWith(",true") || line.endsWith(",label-liar")) {
+                    // end of record
+                    CSV_list.add(parseRecord(record.toString(), ','));
+                    record = new StringBuilder(); // reset
+                    lineNumber++;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("CSV parsing failed.", e);
+        } finally {
+            if (reader != null)
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+        }
+
+        return CSV_list;
+    }
+
+
+    public static List<List<String>> parseCSVtoListFNN(String path, char separator, int maxLines) throws FileNotFoundException {
         // Parse raw CSV file to a list of lists (2D array) of Strings
         // Because records stretch over multiple lines in datasets, we have to do some extra work
 

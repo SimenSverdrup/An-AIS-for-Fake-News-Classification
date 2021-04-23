@@ -1,0 +1,8 @@
+stanford-corenlp-4.2.0/
+javafx-sdk-15.0.1/
+Datasets/FakeNewsNet/fake news detection(FakeNewsNet)/fnn_dev.csv
+Datasets/FakeNewsNet/fake news detection(FakeNewsNet)/fnn_train.csv
+Datasets/FakeNewsNet/fake news detection(FakeNewsNet)/fnn_test.csv
+Datasets/LIAR/liar_train.csv
+Datasets/LIAR/liar_test.csv
+Datasets/LIAR/liar_dev.csv

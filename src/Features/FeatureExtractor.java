@@ -12,6 +12,7 @@ public class FeatureExtractor {
 
     public String[] lexicon;
     public int number_of_features = 0;
+    public static final String BAD_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt";
 
     public boolean FEATURE_BAD_WORDS_TF = false;
     public boolean FEATURE_BAD_WORDS_TFIDF = false;
@@ -77,12 +78,12 @@ public class FeatureExtractor {
         int matches = 0;
 
         for (Antigen ag : antigens) {
-            for (String word : ag.tokenizedText) {
+            for (String word : ag.tokenized_and_processed_text) {
                 for (String blacklisted_word : this.lexicon) {
                     if (word.equals(blacklisted_word)) matches++;
                 }
             }
-            ag.TF = matches/(double) ag.tokenizedText.length;
+            ag.TF = matches/(double) ag.tokenized_and_processed_text.size();
             ag.feature_list[index] = ag.TF;
 
             matches = 0;
@@ -101,7 +102,7 @@ public class FeatureExtractor {
         // An extremely simple feature simply counting the words in the raw text
 
         for (Antigen ag : antigens) {
-            ag.word_count = ag.tokenizedText.length;
+            ag.word_count = ag.tokenized_and_processed_text.size();
             ag.feature_list[index] = ag.word_count;
         }
 
@@ -110,6 +111,6 @@ public class FeatureExtractor {
 
     public void getLexicon() {
         LexiconParser lexicon_parser = new LexiconParser();
-        this.lexicon = lexicon_parser.parse();
+        this.lexicon = lexicon_parser.parse(BAD_WORDS_PATH);
     }
 }

@@ -2,7 +2,6 @@ package AIS;
 
 import Dataset.Dataset;
 
-import java.lang.reflect.Array;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Arrays;
@@ -10,12 +9,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import Dataset.Dataset;
+import Features.Tokenizer;
 
 public class Antigen {
     public String true_class;   // the true class of the antigen
     public String id;
     public String[] classes;
-    public String[] fake_news_classes = {"real", "fake"};
+    public String[] fake_news_binary_classes = {"real", "fake"};
+    public String[] LIAR_classes = {"pants-fire", "false", "barely-true", "half-true", "mostly-true", "true"};
     public String[] iris_classes = {"Iris-setosa", "Iris-versicolor", "Iris-virginica"};
     public String[] wine_classes = {"1", "2", "3"};
     public String[] spirals_classes = {"0", "1", "2"};
@@ -36,8 +37,8 @@ public class Antigen {
     public List<Double> affinities; // the affinities to the antibodies (must be in the same order as antibodies)
     public List<Double> sorted_affinities; // the affinities to the antibodies (in increasing order)
 
-
-    public String[] tokenizedText;
+    public List<String> tokenized_text;
+    public List<String> tokenized_and_processed_text;
     public double TF;
     public double TFIDF;
     public int word_count; // number of words in raw_text
@@ -47,7 +48,7 @@ public class Antigen {
     public String speaker;
     public String headline;
 
-    public Antigen(List<String> record, int number_of_features, Dataset dataset) {
+    public Antigen(List<String> record, int number_of_features, Dataset dataset, boolean binary_class_LIAR) {
         // record is a single line in the form:
         // id,date,speaker,statement,sources,paragraph_based_content,fullText_based_content,label_fnn
         this.dataset = dataset;
@@ -56,7 +57,7 @@ public class Antigen {
 
         switch (this.dataset) {
             case FAKENEWSNET -> {
-                this.classes = this.fake_news_classes.clone();
+                this.classes = this.fake_news_binary_classes.clone();
                 this.true_class = record.get(record.size() - 1).toLowerCase();
                 this.id = record.get(0);
 
@@ -66,12 +67,33 @@ public class Antigen {
                 this.sources = record.get(4).split(", ");
                 this.number_of_classes = 2;
                 parseSources();
-                tokenizeText();
+
+                Tokenizer tokenizer = new Tokenizer();
+                this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
+                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
             }
-            case FAKEDDIT -> {
-                // TODO
-                this.classes = this.fake_news_classes.clone();
-                this.number_of_classes = 2;
+            case LIAR -> {
+                if (binary_class_LIAR) {
+                    this.classes = this.fake_news_binary_classes.clone();
+                    this.number_of_classes = 2;
+                }
+                else {
+                    this.classes = this.LIAR_classes;
+                    this.number_of_classes = 6;
+                }
+
+                this.true_class = record.get(record.size() - 1).toLowerCase();
+                this.id = record.get(0);
+                this.speaker = record.get(2); // speaker
+                this.headline = record.get(3); // headline
+                this.sources = record.get(4).split(", ");
+                this.raw_text = record.get(6); // full text (useful for BERT?)
+                parseSources();
+
+                Tokenizer tokenizer = new Tokenizer();
+                this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
+                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
+                System.out.println(this.tokenized_text);
             }
             case WINE -> {
                 // WINE dataset has class label at first index
@@ -117,6 +139,10 @@ public class Antigen {
 
         this.connected_antibodies.clear();
         this.affinities.clear();
+        for (int i=0; i<this.classes.length; i++) {
+            this.class_vote[i] = 0;
+        }
+        this.predicted_class = "";
     }
 
     public void findConnectedAntibodies(ArrayList<Antibody> antibodies) {
@@ -182,7 +208,6 @@ public class Antigen {
                 }
             }
         }
-        System.out.println("\nclasses: " + Arrays.toString(this.classes));
 
         this.predicted_class = this.classes[this.getIndexOfLargest(this.class_vote)];
     }
@@ -197,22 +222,6 @@ public class Antigen {
             if (array[i] > array[largest]) largest = i;
         }
         return largest; // position of the first largest found
-    }
-
-
-    public void tokenizeText() {
-        String temp = this.raw_text.replaceAll("'", ""); // replace
-        temp = temp.replaceAll("\\W+", " "); // replace all non-letter characters
-
-        this.tokenizedText = temp.split(" ");
-
-        int i = 0;
-
-        for (String word : this.tokenizedText) {
-            this.tokenizedText[i] = word.toLowerCase();
-            i++;
-        }
-        this.word_count = this.tokenizedText.length;
     }
 
     public void parseSources() {
