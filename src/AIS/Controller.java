@@ -32,32 +32,43 @@ public class Controller {
     public ArrayList<Antibody> worst_performing_abs;
 
     public final int k = 5;   // k-fold cross validation split
-    public final double antibody_ratio = 0.7;
+    public final double antibody_ratio = 0.6;
     public final double max_antibody_replacement_ratio = 0.2;
     public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
-    public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
-    public final double RR_radius_mutation_probability = 1/((double) this.number_of_features);
-    public final int generations = 250;
+    public final double feature_vector_mutation_probability = 0.5; //1/((double) this.number_of_features);
+    public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
+    public final double antigen_initialised_ratio = 0.0; // ratio of antibodies initialised with antigen feature vectors
+    public final double randomly_initialised_ratio = 1.0; // ratio of antibodies initialised with random feature vectors
+    public final int generations = 200;
     public final double antibody_removal_threshold = 0.0; // the fitness value threshold for removing antibodies
 
-    public final String RR_radius_init_scheme = "AISLFS"; // VALIS // AISLFS
-    public final Dataset dataset = DIABETES; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian)
-    public final int max_lines = 500;
-    public int number_of_features = 8; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, LIAR=6 (eller 2)
+    public final boolean plot_testing_set = true; // false for plotting training set instead
+    public final boolean VALIS_RR_radius_init_scheme = true;
+    public final Dataset dataset = IRIS; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian)
+    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
     public final boolean binary_class_LIAR = true;
+    public final int max_lines = 300;
 
-    private final boolean[] features_used = {true, false, false, false, false, false, false, false, false, false, false, false};
-    // FEATURE_BAD_WORDS_TF, FEATURE_BAD_WORDS_TFIDF, FEATURE_NUMBER_OF_WORDS, FEATURE_POSITIVE_VS_NEGATIVE_WORDS,
-    // FEATURE_NEGATION_WORDS_TF, FEATURE_EXCLUSIVE_WORDS_TF, FEATURE_SPECIAL_CHARACTERS, FEATURE_CAPITAL_LETTERS,
-    // FEATURE_GRAMMAR, FEATURE_HEADLINE_WEIGHTING, FEATURE_PRECENCE_OF_NUMBERS, FEATURE_NLP = false;
+    private final boolean[] features_used = {
+            true, // Swear/bad words TF "Truth of varying shades" (Rashkin et al.)
+            true, // Word count - Newman et al. (2003)
+            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.)
+    };
 
     public void run() throws Exception {
-        if (binary_class_LIAR && dataset.equals(LIAR)) this.number_of_features = 2;
-
         Parser parser = new Parser(this.dataset, this.max_lines + 1, this.binary_class_LIAR); // + 1 because first line are headers only
 
         List<List<String>> list = parser.getData();
-        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR)) list.remove(0); // remove headers
+        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR)) {
+            list.remove(0); // remove headers
+            this.number_of_features = 0;
+
+            for (boolean b : features_used) {
+                if (b) {
+                    this.number_of_features++;
+                }
+            }
+        }
 
         int number_of_records = list.size();
         this.antigens = new Antigen[number_of_records];
@@ -70,8 +81,18 @@ public class Controller {
 
         int i = 0;
         for (List<String> record : list) {
-            this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
-            i++;
+            if (this.binary_class_LIAR && (this.dataset == LIAR)) {
+                if (!(record.get(record.size() - 1).equalsIgnoreCase("barely-true") || record.get(record.size() - 1).equalsIgnoreCase("half-true"))) {
+                    // for the LIAR dataset, disregard samples with the two "middle" labels
+                    this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
+                    i++;
+                }
+            }
+            else {
+                this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
+                i++;
+            }
+
         }
 
         FeatureExtractor fe = new FeatureExtractor(features_used);
@@ -106,15 +127,20 @@ public class Controller {
                     (this.dataset != WINE) &&
                     (this.dataset != SPIRALS) &&
                     (this.dataset != DIABETES)) {
-                this.training_antigens = fe.extractFeatures(this.training_antigens); // burde disse linjene byttes om?
+                this.training_antigens = fe.extractFeatures(this.training_antigens);
             }
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens);
+
+            for (Antigen ag : this.training_antigens) {
+                System.out.println("Feature vector: " + Arrays.toString(ag.feature_list));
+            }
+
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
 
-            for (int j=0; j<this.training_antigens.size()*antibody_ratio; j++) {
-                // Initialize antibodies using the random heuristic
+            for (int j=0; j<this.training_antigens.size()*antibody_ratio*this.antigen_initialised_ratio; j++) {
+                // Initialize antibodies using antigens
 
                 int rand = 0;
 
@@ -130,7 +156,7 @@ public class Controller {
                 // randomise feature values of added antibody
             }
 
-            for (int j=0; j<this.training_antigens.size()*antibody_ratio*0.1; j++) {
+            for (int j=0; j<this.training_antigens.size()*antibody_ratio*this.randomly_initialised_ratio; j++) {
                 //Add some randomly initialised antibodies
 
                 int rand = ThreadLocalRandom.current().nextInt(0, this.training_antigens.size() - 1);
@@ -142,7 +168,7 @@ public class Controller {
                 for (Antibody ab : this.antibodies) {
                 ab.RR_radius = 100;
 
-                if (this.RR_radius_init_scheme.equals("VALIS")) {
+                if (this.VALIS_RR_radius_init_scheme) {
                     Random rand = new Random();
 
                     while (true) {
@@ -359,36 +385,66 @@ public class Controller {
 
 
 
-                ///////////////// Calculate accuracy:
-                //this.testing_antigens.clear();
-                //this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
-                //this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+                ///////////////// Calculate accuracy for plotting:
+                if (this.plot_testing_set) {
+                    this.testing_antigens.clear();
+                    this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-                ArrayList<Antibody> antibodies_temp = new ArrayList<>();
+                    if ((this.dataset != IRIS) &&
+                            (this.dataset != WINE) &&
+                            (this.dataset != SPIRALS) &&
+                            (this.dataset != DIABETES)) {
 
-                for (Antibody ab : this.antibodies) {
-                    antibodies_temp.add(new Antibody(ab));
-                }
-
-                for (Antibody ab : antibodies_temp) {
-                    ab.findConnectedAntigens(this.training_antigens);
-                }
-
-                double correct_predictions = 0;
-
-                for (Antigen ag : this.training_antigens) {
-                    ag.findConnectedAntibodies(antibodies_temp);
-                    ag.predictClass(antibodies_temp);
-
-                    if (ag.true_class.equals(ag.predicted_class)) {
-                        correct_predictions++;
+                        this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                     }
-                }
 
-                this.generation_accuracies[k][generation-1] = correct_predictions / this.training_antigens.size();
+                    this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
+                    double correct_predictions = 0;
+
+                    for (Antigen ag : this.testing_antigens) {
+                        ag.findConnectedAntibodies(this.antibodies);
+                        ag.predictClass(this.antibodies);
+
+
+                        if (ag.true_class.equals(ag.predicted_class)) {
+                            correct_predictions++;
+                        }
+                    }
+
+                    //this.accuracies[k] = correct_predictions / this.testing_antigens.size();
+                    this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
+                }
+                else {
+                    //this.testing_antigens.clear();
+                    //this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+                    //this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
+                    ArrayList<Antibody> antibodies_temp = new ArrayList<>();
+
+                    for (Antibody ab : this.antibodies) {
+                        antibodies_temp.add(new Antibody(ab));
+                    }
+
+                    for (Antibody ab : antibodies_temp) {
+                        ab.findConnectedAntigens(this.training_antigens);
+                    }
+
+                    double correct_predictions = 0;
+
+                    for (Antigen ag : this.training_antigens) {
+                        ag.findConnectedAntibodies(antibodies_temp);
+                        ag.predictClass(antibodies_temp);
+
+                        if (ag.true_class.equals(ag.predicted_class)) {
+                            correct_predictions++;
+                        }
+                    }
+
+                    this.generation_accuracies[k][generation-1] = correct_predictions / this.training_antigens.size();
+                }
                 /////////////////
             }
-
 
 
             for (int ab_idx=0; ab_idx<this.antibodies.size(); ab_idx++) {
@@ -410,7 +466,11 @@ public class Controller {
             if ((this.dataset != IRIS) &&
                     (this.dataset != WINE) &&
                     (this.dataset != SPIRALS) &&
-                    (this.dataset != DIABETES)) this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+                    (this.dataset != DIABETES)) {
+
+                this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+            }
+
             this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
 
             double correct_predictions = 0;

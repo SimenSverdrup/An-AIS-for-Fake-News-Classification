@@ -37,6 +37,33 @@ public class Tokenizer {
         return tokenized_text;
     }
 
+    public List<String> tokenizeTextAndRemoveCharacters(String raw_text) {
+        // ONLY tokenize the input text
+
+        // set up pipeline properties
+        Properties props = new Properties();
+        // set the list of annotators to run
+        props.setProperty("annotators", "tokenize");
+
+        // build pipeline
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+        // create a document object
+        CoreDocument document = pipeline.processToCoreDocument(raw_text);
+
+        List<String> tokenized_and_removed_characters_text = new ArrayList<>();
+
+
+        for (CoreLabel tok : document.tokens()) {
+            // Remove unwanted characters and stop words
+            String word = tok.word();
+                if (Arrays.stream(unwanted_characters).noneMatch(word::equals)) {
+                    tokenized_and_removed_characters_text.add(tok.word());
+                }
+        }
+
+        return tokenized_and_removed_characters_text;
+    }
+
     public List<String> tokenizeAndProcessText(String raw_text) {
         // Tokenize, lemmatize the input text and remove stop words
 

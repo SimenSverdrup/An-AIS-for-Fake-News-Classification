@@ -37,10 +37,9 @@ public class Antigen {
     public List<Double> affinities; // the affinities to the antibodies (must be in the same order as antibodies)
     public List<Double> sorted_affinities; // the affinities to the antibodies (in increasing order)
 
-    public List<String> tokenized_text;
-    public List<String> tokenized_and_processed_text;
-    public double TF;
-    public double TFIDF;
+    public List<String> tokenized_text; // only tokenized
+    public List<String> tokenized_and_partly_processed_text; // tokenized and removed unwanted
+    public List<String> tokenized_and_fully_processed_text;
     public int word_count; // number of words in raw_text
 
     public String raw_text;
@@ -70,19 +69,33 @@ public class Antigen {
 
                 Tokenizer tokenizer = new Tokenizer();
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
+                this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
+                this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case LIAR -> {
+                String temp = record.get(record.size() - 1).toLowerCase();
+                this.true_class = temp;
+
                 if (binary_class_LIAR) {
                     this.classes = this.fake_news_binary_classes.clone();
                     this.number_of_classes = 2;
+                    switch (temp) {
+                        case "true":
+                            this.true_class = "real";
+                        case "mostly-true":
+                            this.true_class = "real";
+                        case "false":
+                            this.true_class = "fake";
+                        case "pants-fire":
+                            this.true_class = "fake";
+                    // remaining labels have been taken care of in Controller
+                    }
                 }
                 else {
                     this.classes = this.LIAR_classes;
                     this.number_of_classes = 6;
                 }
 
-                this.true_class = record.get(record.size() - 1).toLowerCase();
                 this.id = record.get(0);
                 this.speaker = record.get(2); // speaker
                 this.headline = record.get(3); // headline
@@ -92,8 +105,8 @@ public class Antigen {
 
                 Tokenizer tokenizer = new Tokenizer();
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
-                System.out.println(this.tokenized_text);
+                this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
+                this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case WINE -> {
                 // WINE dataset has class label at first index

@@ -5,45 +5,23 @@ import Dataset.LexiconParser;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
-
-    public String[] lexicon;
+    public boolean[] features;
     public int number_of_features = 0;
-    public static final String BAD_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt";
+    public static final String BAD_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt"; // long
+    public static final String SWEAR_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\swear-words.txt"; // quite short
+    public static final String SECOND_PERSON_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\2nd-person.txt";
 
-    public boolean FEATURE_BAD_WORDS_TF = false;
-    public boolean FEATURE_BAD_WORDS_TFIDF = false;
-    public boolean FEATURE_NUMBER_OF_WORDS = false;
-    public boolean FEATURE_POSITIVE_VS_NEGATIVE_WORDS = false;  // Using Bing Liu's Opinion Lexicon
-    public boolean FEATURE_NEGATION_WORDS_TF = false;   // E.g.: no, not
-    public boolean FEATURE_EXCLUSIVE_WORDS_TF = false;  //E.g.: without, but, however
-    public boolean FEATURE_SPECIAL_CHARACTERS = false;    // Question marks, exclamation points (note, must change the raw text parsing in Antigen to not remove these)
-    public boolean FEATURE_CAPITAL_LETTERS = false;       // Same problem as above
-    public boolean FEATURE_GRAMMAR = false;     // CoreNLP
-    public boolean FEATURE_HEADLINE_WEIGHTING = false;
-    public boolean FEATURE_PRECENCE_OF_NUMBERS = false;
-    public boolean FEATURE_NLP = false;  // Sentiment analysis: BERT, Word2Vec or ELMO
+
 
     public FeatureExtractor(boolean[] features) {
         // Constructor, sets which features to use
 
-        if (features[0]) this.FEATURE_BAD_WORDS_TF = true;
-        if (features[1]) this.FEATURE_BAD_WORDS_TFIDF = true;
-        if (features[2]) this.FEATURE_NUMBER_OF_WORDS = true;
-        if (features[3]) this.FEATURE_POSITIVE_VS_NEGATIVE_WORDS = true;
-        if (features[4]) this.FEATURE_NEGATION_WORDS_TF = true;
-        if (features[5]) this.FEATURE_EXCLUSIVE_WORDS_TF = true;
-        if (features[6]) this.FEATURE_SPECIAL_CHARACTERS = true;
-        if (features[7]) this.FEATURE_CAPITAL_LETTERS = true;
-        if (features[8]) this.FEATURE_GRAMMAR = true;
-        if (features[9]) this.FEATURE_HEADLINE_WEIGHTING = true;
-        if (features[10]) this.FEATURE_PRECENCE_OF_NUMBERS = true;
-        if (features[11]) this.FEATURE_NLP = true;
-
-        // TODO: sjekk prosjektoppgaven for flere features og legg til
+        this.features = features;
 
         for (boolean status : features) {
             if (status) this.number_of_features++;
@@ -54,37 +32,36 @@ public class FeatureExtractor {
         // Method for extracting features
         int index = 0;
 
-        if (this.FEATURE_BAD_WORDS_TF) {
-            antigens = TF(antigens, index);
+        if (this.features[0]) {
+            antigens = TF(antigens, index, BAD_WORDS_PATH);
             index++;
-            assert(index < this.number_of_features);
         }
-        if (this.FEATURE_BAD_WORDS_TFIDF) {
-            antigens = TFIDF(antigens, index);
-            index++;
-            assert(index < this.number_of_features);
-        }
-        if (this.FEATURE_NUMBER_OF_WORDS) {
+        if (this.features[1]) {
             antigens = wordCount(antigens, index);
             index++;
-            assert(index < this.number_of_features);
         }
+        if (this.features[2]) {
+            antigens = TF(antigens, index, SECOND_PERSON_PATH);
+            index++;
+        }
+
 
         return antigens;
     }
 
-    public ArrayList<Antigen> TF(ArrayList<Antigen> antigens, int index) {
-        this.getLexicon();
+    public ArrayList<Antigen> TF(ArrayList<Antigen> antigens, int index, String path) {
+        // Note: calculated term frequency on the tokenized and PARTLY PROCESSED raw text (not lemmatized + stop word removed)
+
+        String[] lexicon = this.getLexicon(path);
         int matches = 0;
 
         for (Antigen ag : antigens) {
-            for (String word : ag.tokenized_and_processed_text) {
-                for (String blacklisted_word : this.lexicon) {
-                    if (word.equals(blacklisted_word)) matches++;
+            for (String word : ag.tokenized_and_partly_processed_text) {
+                for (String lexicon_word : lexicon) {
+                    if (word.toLowerCase(Locale.ROOT).equals(lexicon_word)) matches++;
                 }
             }
-            ag.TF = matches/(double) ag.tokenized_and_processed_text.size();
-            ag.feature_list[index] = ag.TF;
+            ag.feature_list[index] = matches/(double) ag.tokenized_and_partly_processed_text.size();
 
             matches = 0;
         }
@@ -92,7 +69,7 @@ public class FeatureExtractor {
         return antigens;
     }
 
-    public ArrayList<Antigen> TFIDF(ArrayList<Antigen> antigens, int index) {
+    public ArrayList<Antigen> TFIDF(ArrayList<Antigen> antigens, int index, String path) {
 
 
         return antigens;
@@ -102,15 +79,15 @@ public class FeatureExtractor {
         // An extremely simple feature simply counting the words in the raw text
 
         for (Antigen ag : antigens) {
-            ag.word_count = ag.tokenized_and_processed_text.size();
+            ag.word_count = ag.tokenized_and_partly_processed_text.size();
             ag.feature_list[index] = ag.word_count;
         }
 
         return antigens;
     }
 
-    public void getLexicon() {
+    public String[] getLexicon(String path) {
         LexiconParser lexicon_parser = new LexiconParser();
-        this.lexicon = lexicon_parser.parse(BAD_WORDS_PATH);
+        return lexicon_parser.parse(path);
     }
 }
