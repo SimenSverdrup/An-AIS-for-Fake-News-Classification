@@ -6,5 +6,6 @@ public enum Dataset {
     IRIS,
     WINE,
     SPIRALS,
-    DIABETES
+    DIABETES,
+    SONAR
 }

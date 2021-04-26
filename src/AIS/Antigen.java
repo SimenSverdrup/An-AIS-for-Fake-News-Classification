@@ -21,6 +21,8 @@ public class Antigen {
     public String[] wine_classes = {"1", "2", "3"};
     public String[] spirals_classes = {"0", "1", "2"};
     public String[] diabetes_classes = {"0", "1"};
+    public String[] sonar_classes = {"Mine", "Rock"};
+    public String[] ionosphere_classes = {"g", "b"};
 
     public int number_of_classes;
     public String predicted_class;  // the predicted class of the antigen, after all antibodies have voted and decided
@@ -135,6 +137,14 @@ public class Antigen {
             }
             case DIABETES -> {
                 this.classes = this.diabetes_classes.clone();
+                this.true_class = record.get(this.number_of_features); // last index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index));
+                }
+                this.number_of_classes = 2;
+            }
+            case SONAR -> {
+                this.classes = this.sonar_classes.clone();
                 this.true_class = record.get(this.number_of_features); // last index in row
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index));

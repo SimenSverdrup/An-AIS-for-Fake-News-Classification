@@ -32,22 +32,22 @@ public class Controller {
     public ArrayList<Antibody> worst_performing_abs;
 
     public final int k = 5;   // k-fold cross validation split
-    public final double antibody_ratio = 0.6;
-    public final double max_antibody_replacement_ratio = 0.2;
+    public final double antibody_ratio = 1.0;
+    public final double max_antibody_replacement_ratio = 0.1;
     public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
     public final double feature_vector_mutation_probability = 0.5; //1/((double) this.number_of_features);
     public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
-    public final double antigen_initialised_ratio = 0.0; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 1.0; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 200;
+    public final double antigen_initialised_ratio = 1.0; // ratio of antibodies initialised with antigen feature vectors
+    public final double randomly_initialised_ratio = 0.0; // ratio of antibodies initialised with random feature vectors
+    public final int generations = 250;
     public final double antibody_removal_threshold = 0.0; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = true; // false for plotting training set instead
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = IRIS; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian)
-    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
+    public final Dataset dataset = IRIS; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 300;
+    public final int max_lines = 800;
 
     private final boolean[] features_used = {
             true, // Swear/bad words TF "Truth of varying shades" (Rashkin et al.)
@@ -59,6 +59,7 @@ public class Controller {
         Parser parser = new Parser(this.dataset, this.max_lines + 1, this.binary_class_LIAR); // + 1 because first line are headers only
 
         List<List<String>> list = parser.getData();
+
         if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR)) {
             list.remove(0); // remove headers
             this.number_of_features = 0;
@@ -123,18 +124,11 @@ public class Controller {
             }
 
             // Extract features and initialise antibodies
-            if ((this.dataset != IRIS) &&
-                    (this.dataset != WINE) &&
-                    (this.dataset != SPIRALS) &&
-                    (this.dataset != DIABETES)) {
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
             }
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens);
-
-            for (Antigen ag : this.training_antigens) {
-                System.out.println("Feature vector: " + Arrays.toString(ag.feature_list));
-            }
 
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
@@ -201,15 +195,8 @@ public class Controller {
                 clones.clear();
                 abs_to_be_deleted.clear();
 
-                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2/(double) this.antibodies.size(), (double) generation / ((double) (this.generations) * this.antibody_replacement_decrease_factor));
+                double reproduction_ratio = this.max_antibody_replacement_ratio * Math.pow(2 / (double) this.antibodies.size(), (double) generation / ((double) (this.generations) * this.antibody_replacement_decrease_factor));
                 int number_of_new_antibodies = (int) (reproduction_ratio * this.antibodies.size());
-
-                //if (number_of_new_antibodies < 1) {
-                //    System.out.println("New antibody rate too low. Breaking out of loop.");
-                //    break;
-                //}
-
-                //System.out.println("Number of new antibodies this generation: " + number_of_new_antibodies);
 
                 for (Antigen ag : this.training_antigens) {
                     // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
@@ -229,8 +216,6 @@ public class Controller {
                     fitnesses.put(ab_index, ab.fitness);
                     ab_index++;
                 }
-
-
 
 
                 /*
@@ -338,6 +323,7 @@ public class Controller {
                     int max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
                     fitnesses.remove(max_key);
                     clones.add(new Antibody(this.antibodies.get(max_key)));
+
                     antibody_clones_left--;
                 }
 
@@ -347,9 +333,9 @@ public class Controller {
                 }
 
 
-
                 fitnesses.clear();
                 ab_index = 0;
+                int number_of_abs_to_be_deleted = number_of_new_antibodies;
 
                 for (Antigen ag : this.training_antigens) {
                     // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
@@ -366,19 +352,20 @@ public class Controller {
                     ab_index++;
                 }
 
-                while (number_of_new_antibodies > 0) {
+                while (number_of_abs_to_be_deleted > 0) {
                     // Find antibodies in this.antibodies with poorest fitness
                     int min_key = Collections.min(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
                     fitnesses.remove(min_key);
                     abs_to_be_deleted.add(this.antibodies.get(min_key));
 
-                    number_of_new_antibodies--;
+                    number_of_abs_to_be_deleted--;
                 }
 
                 for (Antibody ab : abs_to_be_deleted) {
                     // Remove poorest performing antibodies from this.antibodies
                     this.antibodies.remove(ab);
                 }
+
 
                 // Add the new clones
                 this.antibodies.addAll(clones);
@@ -390,11 +377,7 @@ public class Controller {
                     this.testing_antigens.clear();
                     this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-                    if ((this.dataset != IRIS) &&
-                            (this.dataset != WINE) &&
-                            (this.dataset != SPIRALS) &&
-                            (this.dataset != DIABETES)) {
-
+                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
                         this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                     }
 
@@ -463,11 +446,7 @@ public class Controller {
             this.testing_antigens.clear();
             this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            if ((this.dataset != IRIS) &&
-                    (this.dataset != WINE) &&
-                    (this.dataset != SPIRALS) &&
-                    (this.dataset != DIABETES)) {
-
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
                 this.testing_antigens = fe.extractFeatures(this.testing_antigens);
             }
 
@@ -479,12 +458,16 @@ public class Controller {
                 ag.findConnectedAntibodies(this.antibodies);
                 ag.predictClass(this.antibodies);
 
-                System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
+                if (ag.connected_antibodies.size() == 0) {
+                    System.out.println("No connected abs to this ag!");
+                }
+
+                /*System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
                 System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
                 System.out.println("Ag class: " + ag.true_class);
                 System.out.println("Ag predicted class: " + ag.predicted_class);
                 System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
-                System.out.println("\n");
+                System.out.println("\n");*/
 
 
                 if (ag.true_class.equals(ag.predicted_class)) {

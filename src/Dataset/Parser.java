@@ -17,6 +17,9 @@ public class Parser {
     public static final String WINE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\wine.data";
     public static final String SPIRALS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\spirals.txt";
     public static final String DIABETES_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\diabetes.csv";
+    public static final String SONAR_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\sonar_csv.csv";
+    public static final String IONOSPHERE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\ionosphere.data";
+
     public String path = "";
     private List<List<String>> data;
     public static boolean binary_class_LIAR; // convert 6-class to binary (2-class) classification for LIAR
@@ -39,7 +42,6 @@ public class Parser {
             case IRIS -> {
                 this.path = IRIS_PATH;
                 this.data = parseBenchmarkDatasets(this.path, maxLines);
-                this.data.remove(this.data.size()-1); // remove last row (empty)
             }
             case WINE -> {
                 this.path = WINE_PATH;
@@ -52,6 +54,11 @@ public class Parser {
             case DIABETES -> {
                 this.path = DIABETES_PATH;
                 this.data = parseBenchmarkDatasets(this.path, maxLines);
+            }
+            case SONAR -> {
+                this.path = SONAR_PATH;
+                this.data = parseBenchmarkDatasets(this.path, maxLines);
+                this.data.remove(0); // remove first row (headers)
             }
 
             default -> this.path = "";
