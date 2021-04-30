@@ -31,28 +31,47 @@ public class Controller {
     public ArrayList<Antigen> testing_antigens; // antigens used for testing (this iteration)
     public ArrayList<Antibody> worst_performing_abs;
 
-    public final int k = 5;   // k-fold cross validation split
-    public final double antibody_ratio = 1.0;
+    public final int k = 3;   // k-fold cross validation split
+    public final double antibody_ratio = 0.8;
     public final double max_antibody_replacement_ratio = 0.1;
     public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
-    public final double feature_vector_mutation_probability = 0.5; //1/((double) this.number_of_features);
-    public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
-    public final double antigen_initialised_ratio = 1.0; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 0.0; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 250;
-    public final double antibody_removal_threshold = 0.0; // the fitness value threshold for removing antibodies
+    public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
+    public final double RR_radius_mutation_probability = 0.75; // 1/((double) this.number_of_features);
+    public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
+    public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
+    public final int generations = 200;
+    public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
-    public final boolean plot_testing_set = true; // false for plotting training set instead
+    public final boolean plot_testing_set = false; // false for plotting training set instead
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = IRIS; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public final Dataset dataset = FAKENEWSNET; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 800;
+    public final int max_lines = 500;
 
     private final boolean[] features_used = {
-            true, // Swear/bad words TF "Truth of varying shades" (Rashkin et al.)
-            true, // Word count - Newman et al. (2003)
-            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.)
+            // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
+            false, // Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
+            false, // Word count - Newman et al. (2003)
+            false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
+            false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
+            false, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
+            false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
+            false, // Strong superlatives - "Truth of varying shades" (Rashkin et al.)
+            false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
+            false, // Swear words - "Truth of varying shades" (Rashkin et al.)
+            false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            false, // Negations - "Behind the cues" (made myself)
+            false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
+            false, // Strongly subjective words - (MPQA)
+            false, // Quotation marks TF (found from manual review of the articles)
+            false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
+            false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al.
+            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
     };
 
     public void run() throws Exception {
@@ -82,8 +101,11 @@ public class Controller {
 
         int i = 0;
         for (List<String> record : list) {
+            this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
+            i++;
+            /*
             if (this.binary_class_LIAR && (this.dataset == LIAR)) {
-                if (!(record.get(record.size() - 1).equalsIgnoreCase("barely-true") || record.get(record.size() - 1).equalsIgnoreCase("half-true"))) {
+                if (!(record.get(record.size() - 1).equals("barely-true") || record.get(record.size() - 1).equals("half-true"))) {
                     // for the LIAR dataset, disregard samples with the two "middle" labels
                     this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
                     i++;
@@ -93,7 +115,7 @@ public class Controller {
                 this.antigens[i] = new Antigen(record, number_of_features, this.dataset, this.binary_class_LIAR);
                 i++;
             }
-
+            */
         }
 
         FeatureExtractor fe = new FeatureExtractor(features_used);
@@ -126,6 +148,13 @@ public class Controller {
             // Extract features and initialise antibodies
             if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
+            }
+
+            for (Antigen ag : this.training_antigens) {
+                System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
+                System.out.println("Speaker: " + ag.speaker);
+                System.out.println("Headline: " + ag.headline);
+
             }
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens);

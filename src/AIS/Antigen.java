@@ -42,6 +42,8 @@ public class Antigen {
     public List<String> tokenized_text; // only tokenized
     public List<String> tokenized_and_partly_processed_text; // tokenized and removed unwanted
     public List<String> tokenized_and_fully_processed_text;
+    public List<String> processed_headline;
+    public int sentence_count;
     public int word_count; // number of words in raw_text
 
     public String raw_text;
@@ -67,10 +69,12 @@ public class Antigen {
                 this.raw_text = record.get(6); // full text
                 this.sources = record.get(4).split(", ");
                 this.number_of_classes = 2;
-                parseSources();
+                //parseSources();
 
                 Tokenizer tokenizer = new Tokenizer();
+                this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
+                this.sentence_count = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
                 this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
                 this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
             }
@@ -86,11 +90,14 @@ public class Antigen {
                             this.true_class = "real";
                         case "mostly-true":
                             this.true_class = "real";
+                        case "half-true":
+                            this.true_class = "real";
+                        case "mostly-false":
+                            this.true_class = "fake";
                         case "false":
                             this.true_class = "fake";
                         case "pants-fire":
                             this.true_class = "fake";
-                    // remaining labels have been taken care of in Controller
                     }
                 }
                 else {
@@ -103,10 +110,12 @@ public class Antigen {
                 this.headline = record.get(3); // headline
                 this.sources = record.get(4).split(", ");
                 this.raw_text = record.get(6); // full text (useful for BERT?)
-                parseSources();
+                //parseSources();
 
                 Tokenizer tokenizer = new Tokenizer();
+                this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
+                this.sentence_count = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
                 this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
                 this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
             }

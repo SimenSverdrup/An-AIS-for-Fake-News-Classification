@@ -3,6 +3,7 @@ package Features;
 
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.CoreDocument;
+import edu.stanford.nlp.pipeline.CoreSentence;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 
 import java.util.*;
@@ -38,7 +39,7 @@ public class Tokenizer {
     }
 
     public List<String> tokenizeTextAndRemoveCharacters(String raw_text) {
-        // ONLY tokenize the input text
+        // ONLY tokenize the input text and remove unwanted characters
 
         // set up pipeline properties
         Properties props = new Properties();
@@ -62,6 +63,28 @@ public class Tokenizer {
         }
 
         return tokenized_and_removed_characters_text;
+    }
+
+    public int tokenizeTextAndSplitSentences(String raw_text) {
+        // Count the sentences
+
+        int sentence_count = 0;
+
+        // set up pipeline properties
+        Properties props = new Properties();
+        // set the list of annotators to run
+        props.setProperty("annotators", "tokenize,ssplit");
+
+        // build pipeline
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+        // create a document object
+        CoreDocument document = pipeline.processToCoreDocument(raw_text);
+
+        for (CoreSentence sentence : document.sentences()) {
+            sentence_count++;
+        }
+
+        return sentence_count;
     }
 
     public List<String> tokenizeAndProcessText(String raw_text) {

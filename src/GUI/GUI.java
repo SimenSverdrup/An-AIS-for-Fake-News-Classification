@@ -28,9 +28,9 @@ public class GUI extends Application {
     Controller controller;
     private final int width = 1250;
     private final int height = 650;
-    private final int horizontal_offset = 500;
-    private final int vertical_offset = 100;
-    private final int scale = 400;
+    private final int horizontal_offset = 700;
+    private final int vertical_offset = 300;
+    private final int scale = 300;
 
 
     public GUI() throws Exception {
@@ -52,6 +52,8 @@ public class GUI extends Application {
 
     @Override
     public void start(Stage primaryStage) throws Exception{
+
+
         primaryStage.setTitle("Solution Plot");
         Pane pane = new Pane();
         Scene scene = new Scene(pane, this.width, this.height, true);
@@ -198,8 +200,8 @@ public class GUI extends Application {
 
 
 
-        //primaryStage.setScene(scene);
-        primaryStage.setScene(scene2);
+        primaryStage.setScene(scene);
+        //primaryStage.setScene(scene2);
         primaryStage.show();
     }
 }
