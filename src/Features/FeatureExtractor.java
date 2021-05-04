@@ -2,11 +2,18 @@ package Features;
 
 import AIS.Antigen;
 import Dataset.LexiconParser;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
@@ -36,7 +43,7 @@ public class FeatureExtractor {
         }
     }
 
-    public ArrayList<Antigen> extractFeatures(ArrayList<Antigen> antigens) {
+    public ArrayList<Antigen> extractFeatures(ArrayList<Antigen> antigens) throws IOException, InterruptedException, JSONException {
         // Method for extracting features
         int index = 0;
 
@@ -124,6 +131,15 @@ public class FeatureExtractor {
             antigens = divisiveTopics(antigens, index);
             index++;
         }
+        if (this.features[21]) {
+            antigens = googleFactCheck(antigens, index);
+            index++;
+        }
+        if (this.features[22]) {
+            antigens = wordEmbeddings(antigens, index);
+            index++;
+        }
+
 
         return antigens;
     }
@@ -153,6 +169,66 @@ public class FeatureExtractor {
         return antigens;
     }
 
+
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index) {
+        // Compute word embeddings with Bert-as-a-service
+
+
+
+
+        return antigens;
+    }
+
+    public ArrayList<Antigen> googleFactCheck(ArrayList<Antigen> antigens, int index) throws IOException, InterruptedException, JSONException, JSONException {
+        // Use the Google Fact Check API to compute feature value
+
+        String base_url = "https://factchecktools.googleapis.com/v1alpha1/claims:search";
+        String charset = "UTF-8";
+        String language_code = "en-US";
+        String API_key = "secret";
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        for (Antigen ag : antigens) {
+            String params = String.format("?languageCode=%s&query=%s&key=%s",
+                    URLEncoder.encode(language_code, charset),
+                    URLEncoder.encode(ag.headline, charset),
+                    URLEncoder.encode(API_key, charset));
+
+            String url = base_url + params;
+
+            HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
+            //System.out.println("Request: " + request.toString());
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            JSONObject json = new JSONObject(response.body());
+
+            ag.feature_list[index] = 0.5;
+
+            try {
+                String review = json.getJSONArray("claims").
+                        getJSONObject(0).
+                        getJSONArray("claimReview").
+                        getJSONObject(0).getString("textualRating");
+                //System.out.println(review);
+
+                if (review.toLowerCase(Locale.ROOT).contains("false") ||
+                        review.toLowerCase(Locale.ROOT).contains("pants") ||
+                        (review.toLowerCase(Locale.ROOT).contains("misleading"))) ag.feature_list[index] = 1.0;
+
+                else if (review.toLowerCase(Locale.ROOT).contains("accurate") ||
+                        review.toLowerCase(Locale.ROOT).contains("correct") ||
+                        review.toLowerCase(Locale.ROOT).contains("true")) ag.feature_list[index] = 0.0;
+
+            } catch (Exception e) {
+                //System.out.println("Couldn't parse JSON");
+            }
+        }
+
+
+        return antigens;
+    }
 
     public ArrayList<Antigen> calculateFKGradeLevel(ArrayList<Antigen> antigens, int index) {
         // Calculate the Flesch-Kincaid Grade level

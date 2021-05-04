@@ -36,7 +36,7 @@ public class Controller {
     public final double max_antibody_replacement_ratio = 0.1;
     public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
     public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
-    public final double RR_radius_mutation_probability = 0.75; // 1/((double) this.number_of_features);
+    public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
     public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
     public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
     public final int generations = 200;
@@ -44,10 +44,10 @@ public class Controller {
 
     public final boolean plot_testing_set = false; // false for plotting training set instead
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = FAKENEWSNET; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public final Dataset dataset = LIAR; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 500;
+    public final int max_lines = 300;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -63,15 +63,18 @@ public class Controller {
             false, // Swear words - "Truth of varying shades" (Rashkin et al.)
             false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Negations - "Behind the cues" (made myself)
-            false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            true, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            false, // Strongly subjective words - (MPQA)
+            true, // Strongly subjective words - (MPQA)
             false, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
-            false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al.
-            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            false, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
+            true, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            true, // Google Fact Check API hash value - Found myself
+            true, // BERT-as-a-service for word embeddings - see NLP processing in State of the art for inspiration
+
     };
 
     public void run() throws Exception {
@@ -154,7 +157,6 @@ public class Controller {
                 System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
                 System.out.println("Speaker: " + ag.speaker);
                 System.out.println("Headline: " + ag.headline);
-
             }
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens);

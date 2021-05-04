@@ -10,5 +10,16 @@
     <orderEntry type="library" name="lib1" level="application" />
     <orderEntry type="library" name="lib" level="project" />
     <orderEntry type="library" name="stanford-corenlp-4.2" level="project" />
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/java-json.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$MODULE_DIR$/java-json.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>
