@@ -47,7 +47,7 @@ public class Controller {
     public final Dataset dataset = LIAR; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 300;
+    public final int max_lines = 15;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -63,17 +63,17 @@ public class Controller {
             false, // Swear words - "Truth of varying shades" (Rashkin et al.)
             false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Negations - "Behind the cues" (made myself)
-            true, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            true, // Strongly subjective words - (MPQA)
+            false, // Strongly subjective words - (MPQA)
             false, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            false, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            true, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
-            true, // Google Fact Check API hash value - Found myself
-            true, // BERT-as-a-service for word embeddings - see NLP processing in State of the art for inspiration
+            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            false, // Google Fact Check API hash value - Found myself
+            true, // BERT for word embeddings - see NLP processing in State of the art for inspiration (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
 
     };
 

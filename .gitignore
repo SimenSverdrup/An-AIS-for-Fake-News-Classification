@@ -6,3 +6,7 @@ Datasets/FakeNewsNet/fake news detection(FakeNewsNet)/fnn_test.csv
 Datasets/LIAR/liar_train.csv
 Datasets/LIAR/liar_test.csv
 Datasets/LIAR/liar_dev.csv
+cased_L-12_H-768_A-12/
+httpclient-4.4.1.jar
+httpcore-4.4.14.jar
+commons-logging-1.2.jar

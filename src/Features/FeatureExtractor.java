@@ -2,15 +2,27 @@ package Features;
 
 import AIS.Antigen;
 import Dataset.LexiconParser;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import javax.json.Json;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URLEncoder;
-import java.net.http.HttpClient;
+import java.net.*;
 import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -170,11 +182,48 @@ public class FeatureExtractor {
     }
 
 
-    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index) {
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index) throws IOException, JSONException, InterruptedException {
         // Compute word embeddings with Bert-as-a-service
 
+        String base_url = "http://0.0.0.0:8125/encode";
+
+        JSONObject json = new JSONObject();
+        json.put("id", 123);
+        json.put("texts", new String[]{"hello world", "good day!"});
+        json.put("is_tokenized", false);
+
+        HttpClient httpClient = HttpClientBuilder.create().build();
+
+        try {
+            HttpPost post = new HttpPost(base_url);
+            post.setHeader("Content-type", "application/json");
+            post.setHeader("Accept", "application/json");
+            post.setEntity(new StringEntity(json.toString()));
+
+            //System.out.println("JSON: " + json);
+            //System.out.println("POST request: " + post.getEntity());
+            //System.out.println("POST request content: " + post.getEntity().getContent());
+
+            HttpResponse response = httpClient.execute(post);
+
+            HttpEntity entity = response.getEntity();
+            String responseString = EntityUtils.toString(entity, "UTF-8");
+            JSONObject response_json = new JSONObject(responseString);
+
+            //System.out.println("Login form POST result: " + response.getStatusLine().toString());
+            System.out.println("Result: " + response_json.get("result"));
+
+        } catch (Exception ex) {
+            System.out.println("Couldn't connect to local BERT server");
+        }
 
 
+
+
+
+        for (Antigen ag : antigens) {
+
+        }
 
         return antigens;
     }
@@ -185,9 +234,9 @@ public class FeatureExtractor {
         String base_url = "https://factchecktools.googleapis.com/v1alpha1/claims:search";
         String charset = "UTF-8";
         String language_code = "en-US";
-        String API_key = "secret";
+        String API_key = "";
 
-        HttpClient client = HttpClient.newHttpClient();
+        java.net.http.HttpClient client = java.net.http.HttpClient.newHttpClient();
 
         for (Antigen ag : antigens) {
             String params = String.format("?languageCode=%s&query=%s&key=%s",
@@ -200,7 +249,7 @@ public class FeatureExtractor {
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).build();
             //System.out.println("Request: " + request.toString());
 
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            java.net.http.HttpResponse<String> response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
 
             JSONObject json = new JSONObject(response.body());
 
