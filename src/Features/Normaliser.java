@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class Normaliser {
 
-    public ArrayList<Antigen> NormaliseFeatures(ArrayList<Antigen> antigens) {
+    public ArrayList<Antigen> NormaliseFeatures(ArrayList<Antigen> antigens, boolean negative_vals) {
         // Normalises feature values with unit variance (Z-score normalization)
         // The reasoning behind having avg std vectors instead of scalars,
         // is that we wish to normalise across single features at a time, not mix the features together
@@ -52,8 +52,23 @@ public class Normaliser {
         double[] max_vector = antigens.get(0).feature_list.clone(); // will hold the maximal values at index j for every feature_list[i]
         double[] min_vector = antigens.get(0).feature_list.clone(); // will hold the minimal values at index j for every feature_list[i]
 
+        if (negative_vals) {
+            for (Antigen ag : antigens) {
+                // find largest and smallest values in the 2D list
+                for (int j = 0; j < ag.number_of_features; j++) {
+                    if (ag.feature_list[j] < min_vector[j]) min_vector[j] = ag.feature_list[j];
+                }
+            }
+            for (Antigen ag : antigens) {
+                for (int j = 0; j < ag.number_of_features; j++) {
+                    ag.feature_list[j] += Math.abs(min_vector[j]);
+                }
+            }
+
+            min_vector = antigens.get(0).feature_list.clone();
+        }
+
         for (Antigen ag : antigens) {
-            // find largest and smallest values in the 2D list
             for (int j = 0; j < ag.number_of_features; j++) {
                 if (ag.feature_list[j] > max_vector[j]) max_vector[j] = ag.feature_list[j];
                 if (ag.feature_list[j] < min_vector[j]) min_vector[j] = ag.feature_list[j];

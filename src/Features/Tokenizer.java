@@ -65,10 +65,10 @@ public class Tokenizer {
         return tokenized_and_removed_characters_text;
     }
 
-    public int tokenizeTextAndSplitSentences(String raw_text) {
-        // Count the sentences
+    public List<String> tokenizeTextAndSplitSentences(String raw_text) {
+        // Split into sentences
 
-        int sentence_count = 0;
+        List<String> sentence_split_text = new ArrayList<>();
 
         // set up pipeline properties
         Properties props = new Properties();
@@ -81,10 +81,11 @@ public class Tokenizer {
         CoreDocument document = pipeline.processToCoreDocument(raw_text);
 
         for (CoreSentence sentence : document.sentences()) {
-            sentence_count++;
+            sentence_split_text.add(sentence.text());
+            //System.out.println("SENTENCE: " + sentence);
         }
 
-        return sentence_count;
+        return sentence_split_text;
     }
 
     public List<String> tokenizeAndProcessText(String raw_text) {

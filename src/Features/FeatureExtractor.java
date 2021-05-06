@@ -3,6 +3,7 @@ package Features;
 import AIS.Antigen;
 import Dataset.LexiconParser;
 
+import com.google.gson.*;
 import org.apache.http.HttpEntity;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
@@ -15,6 +16,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -24,6 +26,7 @@ import java.net.*;
 import java.net.http.HttpRequest;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -148,7 +151,11 @@ public class FeatureExtractor {
             index++;
         }
         if (this.features[22]) {
-            antigens = wordEmbeddings(antigens, index);
+            antigens = wordEmbeddings(antigens, index, true, false);
+            index++;
+        }
+        if (this.features[23]) {
+            antigens = wordEmbeddings(antigens, index, false, true);
             index++;
         }
 
@@ -182,47 +189,119 @@ public class FeatureExtractor {
     }
 
 
-    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index) throws IOException, JSONException, InterruptedException {
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean headline, boolean full_text) throws IOException, JSONException, InterruptedException {
         // Compute word embeddings with Bert-as-a-service
 
         String base_url = "http://0.0.0.0:8125/encode";
 
-        JSONObject json = new JSONObject();
-        json.put("id", 123);
-        json.put("texts", new String[]{"hello world", "good day!"});
-        json.put("is_tokenized", false);
-
         HttpClient httpClient = HttpClientBuilder.create().build();
+        //String[] unwanted_chars = {",", ".", "-", "--", ":", "\"", "’", "(", ")", ";"};
 
-        try {
-            HttpPost post = new HttpPost(base_url);
-            post.setHeader("Content-type", "application/json");
-            post.setHeader("Accept", "application/json");
-            post.setEntity(new StringEntity(json.toString()));
+        if (full_text) {
+            // use head and tail sentence of articles
+            for (Antigen ag : antigens) {
+                String[] text = new String[2];
 
-            //System.out.println("JSON: " + json);
-            //System.out.println("POST request: " + post.getEntity());
-            //System.out.println("POST request content: " + post.getEntity().getContent());
+                text[0] = ag.sentence_split_text.get(0);
+                text[1] = ag.sentence_split_text.get(ag.sentence_count - 1);
+                int counter = 1;
+                do {
+                    text[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
+                    counter++;
+                } while (text[1].length() < 2);
 
-            HttpResponse response = httpClient.execute(post);
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
 
-            HttpEntity entity = response.getEntity();
-            String responseString = EntityUtils.toString(entity, "UTF-8");
-            JSONObject response_json = new JSONObject(responseString);
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
 
-            //System.out.println("Login form POST result: " + response.getStatusLine().toString());
-            System.out.println("Result: " + response_json.get("result"));
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
 
-        } catch (Exception ex) {
-            System.out.println("Couldn't connect to local BERT server");
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array1 = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
+                        JsonArray array2 = json_obj.getAsJsonArray("result").get(1).getAsJsonArray();
+
+                        int zeroCounter = 0;
+
+                        for (int idx = index; idx < ag.feature_list.length; idx++) {
+                            if (idx < index + array1.size()) {
+                                ag.feature_list[idx] = Double.parseDouble(array1.get(idx - index).toString());
+                            }
+                            else {
+                                ag.feature_list[idx] = Double.parseDouble(array2.get(idx - (index + array1.size())).toString());
+                            }
+                        }
+                        //System.out.println("Feature list: " + Arrays.toString(ag.feature_list));
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
         }
 
+        else {
+            // headlines
+            System.out.println("Getting word embeddings...");
+            for (Antigen ag : antigens) {
+                String[] text = {ag.headline};
+
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
+
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
+
+                    //System.out.println("JSON: " + json);
+                    //System.out.println("POST request: " + post.getEntity());
+                    //System.out.println("POST request content: " + post.getEntity().getContent());
+
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
+
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+                        //JSONObject response_json = new JSONObject(responseString);
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
 
-
-
-        for (Antigen ag : antigens) {
-
+                        try {
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = 0;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response for this antigen");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
         }
 
         return antigens;

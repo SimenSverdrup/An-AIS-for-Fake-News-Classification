@@ -25,6 +25,7 @@ public class Controller {
     public double[] final_generation_accuracies;
     public Antigen[] antigens; // all antigens
     public ArrayList<Antibody> antibodies;
+    public boolean negative_vals = false;
 
     public Antigen[][] antigens_split; // antigens split into k separate arrays, for k-fold cross-validation testing
     public ArrayList<Antigen> training_antigens; // antigens used for training (this iteration)
@@ -32,14 +33,14 @@ public class Controller {
     public ArrayList<Antibody> worst_performing_abs;
 
     public final int k = 3;   // k-fold cross validation split
-    public final double antibody_ratio = 0.8;
+    public final double antibody_ratio = 1.0;
     public final double max_antibody_replacement_ratio = 0.1;
     public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
     public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
     public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
-    public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 200;
+    public final double antigen_initialised_ratio = 0.9; // ratio of antibodies initialised with antigen feature vectors
+    public final double randomly_initialised_ratio = 0.1; // ratio of antibodies initialised with random feature vectors
+    public final int generations = 300;
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = false; // false for plotting training set instead
@@ -47,7 +48,7 @@ public class Controller {
     public final Dataset dataset = LIAR; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 15;
+    public final int max_lines = 25;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -69,12 +70,12 @@ public class Controller {
             false, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            false, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
             false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
             false, // Google Fact Check API hash value - Found myself
-            true, // BERT for word embeddings - see NLP processing in State of the art for inspiration (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
-
+            false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
+            true, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
     };
 
     public void run() throws Exception {
@@ -90,6 +91,15 @@ public class Controller {
                 if (b) {
                     this.number_of_features++;
                 }
+            }
+            if (features_used[22]) {
+                // 768-field word embeddings are used
+                this.number_of_features += 767;
+                this.negative_vals = true;
+            }
+            if (features_used[23]) {
+                this.number_of_features += 1534; // add an additional 767*2 feature values (first and last sentence of full text)
+                this.negative_vals = true;
             }
         }
 
@@ -153,13 +163,13 @@ public class Controller {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
             }
 
-            for (Antigen ag : this.training_antigens) {
-                System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
-                System.out.println("Speaker: " + ag.speaker);
-                System.out.println("Headline: " + ag.headline);
-            }
-
-            this.training_antigens = norm.NormaliseFeatures(this.training_antigens);
+            //for (Antigen ag : this.training_antigens) {
+                //System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
+                //System.out.println("Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
+                //System.out.println("Speaker: " + ag.speaker);
+                //System.out.println("Headline: " + ag.headline);
+            //}
+            this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
 
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
@@ -170,7 +180,7 @@ public class Controller {
                 int rand = 0;
 
                 do {
-                    rand = ThreadLocalRandom.current().nextInt(0, this.training_antigens.size() - 1);
+                    rand = ThreadLocalRandom.current().nextInt(this.training_antigens.size());
                 }
                 while (antigens_added.contains(this.training_antigens.get(rand)));
 
@@ -190,8 +200,8 @@ public class Controller {
                 // randomise feature values of added antibody
             }
 
-                for (Antibody ab : this.antibodies) {
-                ab.RR_radius = 100;
+            for (Antibody ab : this.antibodies) {
+                ab.RR_radius = 1000;
 
                 if (this.VALIS_RR_radius_init_scheme) {
                     Random rand = new Random();
@@ -412,7 +422,7 @@ public class Controller {
                         this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                     }
 
-                    this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+                    this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
 
                     double correct_predictions = 0;
 
@@ -481,7 +491,7 @@ public class Controller {
                 this.testing_antigens = fe.extractFeatures(this.testing_antigens);
             }
 
-            this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+            this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
 
             double correct_predictions = 0;
 

@@ -53,7 +53,7 @@ public class GUI extends Application {
     @Override
     public void start(Stage primaryStage) throws Exception{
 
-
+        /*
         primaryStage.setTitle("Solution Plot");
         Pane pane = new Pane();
         Scene scene = new Scene(pane, this.width, this.height, true);
@@ -178,7 +178,7 @@ public class GUI extends Application {
         txt10.setX(100);
         txt10.setY(vertical_offset+230);
         pane.getChildren().add(txt10);
-
+        */
 
 
         ///// Accuracy plot //////
@@ -200,8 +200,8 @@ public class GUI extends Application {
 
 
 
-        primaryStage.setScene(scene);
-        //primaryStage.setScene(scene2);
+        //primaryStage.setScene(scene);
+        primaryStage.setScene(scene2);
         primaryStage.show();
     }
 }

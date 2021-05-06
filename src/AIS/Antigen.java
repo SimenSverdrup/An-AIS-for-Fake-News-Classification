@@ -43,6 +43,7 @@ public class Antigen {
     public List<String> tokenized_and_partly_processed_text; // tokenized and removed unwanted
     public List<String> tokenized_and_fully_processed_text;
     public List<String> processed_headline;
+    public List<String> sentence_split_text;
     public int sentence_count;
     public int word_count; // number of words in raw_text
 
@@ -74,9 +75,10 @@ public class Antigen {
                 Tokenizer tokenizer = new Tokenizer();
                 this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.sentence_count = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_split_text = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_count = this.sentence_split_text.size();
                 this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
-                this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
+                this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case LIAR -> {
                 String temp = record.get(record.size() - 1).toLowerCase();
@@ -115,9 +117,10 @@ public class Antigen {
                 Tokenizer tokenizer = new Tokenizer();
                 this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.sentence_count = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_split_text = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_count = this.sentence_split_text.size();
                 this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
-                this.tokenized_and_fully_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
+                this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case WINE -> {
                 // WINE dataset has class label at first index

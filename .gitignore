@@ -10,3 +10,4 @@ cased_L-12_H-768_A-12/
 httpclient-4.4.1.jar
 httpcore-4.4.14.jar
 commons-logging-1.2.jar
+gson-2.8.5.jar
