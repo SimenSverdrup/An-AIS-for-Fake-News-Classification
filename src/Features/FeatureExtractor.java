@@ -5,28 +5,21 @@ import Dataset.LexiconParser;
 
 import com.google.gson.*;
 import org.apache.http.HttpEntity;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
+
 import org.apache.http.entity.StringEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import javax.json.Json;
 import java.io.IOException;
 import java.net.*;
 import java.net.http.HttpRequest;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -232,8 +225,6 @@ public class FeatureExtractor {
                         JsonArray array1 = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
                         JsonArray array2 = json_obj.getAsJsonArray("result").get(1).getAsJsonArray();
 
-                        int zeroCounter = 0;
-
                         for (int idx = index; idx < ag.feature_list.length; idx++) {
                             if (idx < index + array1.size()) {
                                 ag.feature_list[idx] = Double.parseDouble(array1.get(idx - index).toString());
@@ -283,7 +274,6 @@ public class FeatureExtractor {
                         JsonParser parser = new JsonParser();
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
                         JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
-
 
                         try {
                             for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
