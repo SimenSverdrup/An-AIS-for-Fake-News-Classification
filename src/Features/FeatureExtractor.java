@@ -4,8 +4,15 @@ import AIS.Antigen;
 import Dataset.LexiconParser;
 
 import com.google.gson.*;
-import org.apache.http.HttpEntity;
+import edu.stanford.nlp.ling.CoreAnnotations;
+import edu.stanford.nlp.neural.rnn.RNNCoreAnnotations;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.sentiment.SentimentCoreAnnotations;
+import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.util.CoreMap;
 
+import org.apache.http.HttpEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -22,6 +29,7 @@ import java.net.http.HttpRequest;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Properties;
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
@@ -144,11 +152,19 @@ public class FeatureExtractor {
             index++;
         }
         if (this.features[22]) {
-            antigens = wordEmbeddings(antigens, index, true, false);
+            antigens = wordEmbeddings(antigens, index, true);
             index++;
         }
         if (this.features[23]) {
-            antigens = wordEmbeddings(antigens, index, false, true);
+            antigens = wordEmbeddings(antigens, index, false);
+            index++;
+        }
+        if (this.features[24]) {
+            antigens = sentimentAnalysis(antigens, index, false);
+            index++;
+        }
+        if (this.features[25]) {
+            antigens = sentimentAnalysis(antigens, index, true);
             index++;
         }
 
@@ -181,8 +197,46 @@ public class FeatureExtractor {
         return antigens;
     }
 
+    public ArrayList<Antigen> sentimentAnalysis(ArrayList<Antigen> antigens, int index, boolean full_text) {
+        // Calculate sentiment analysis with Stanford CoreNLP
+        // Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
 
-    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean headline, boolean full_text) throws IOException, JSONException, InterruptedException {
+        Properties props = new Properties();
+        props.setProperty("annotators", "tokenize, ssplit, pos, parse, sentiment");
+        props.setProperty("parse.model", "edu/stanford/nlp/models/srparser/englishSR.ser.gz");
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+
+        for (Antigen ag : antigens) {
+            if (full_text) {
+                //System.out.println("Start sentiment processing");
+                String text = ag.sentence_split_text.get(0) + " " + ag.sentence_split_text.get(ag.sentence_count - 1);
+                //System.out.println("Text (head+tail): " + text);
+                Annotation annotation = pipeline.process(text);
+                //System.out.println("Finished sentiment processing");
+
+                for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
+                    Tree tree = sentence.get(SentimentCoreAnnotations.SentimentAnnotatedTree.class);
+                    ag.feature_list[index] = RNNCoreAnnotations.getPredictedClass(tree);
+                }
+                //System.out.println("Feature value: " + ag.feature_list[index]);
+            }
+            else {
+                //System.out.println("Text (headline): " + ag.headline);
+                Annotation annotation = pipeline.process(ag.headline);
+
+                for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
+                    Tree tree = sentence.get(SentimentCoreAnnotations.SentimentAnnotatedTree.class);
+                    ag.feature_list[index] = RNNCoreAnnotations.getPredictedClass(tree);
+                }
+
+            }
+        }
+
+        return antigens;
+    }
+
+
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean full_text) throws JSONException {
         // Compute word embeddings with Bert-as-a-service
 
         String base_url = "http://0.0.0.0:8125/encode";

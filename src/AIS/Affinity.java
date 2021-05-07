@@ -13,6 +13,7 @@ public class Affinity {
             distance += Math.pow(diff, 2);
         }
 
+
         return Math.sqrt((distance));
     }
 

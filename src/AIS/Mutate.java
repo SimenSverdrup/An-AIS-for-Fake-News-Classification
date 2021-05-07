@@ -19,6 +19,26 @@ public class Mutate {
         // that means less than 0.33
     }
 
+    boolean[] mutateFeatureSubset(boolean[] features_used, double mutation_probability) {
+        // Mutates the input vector according to the probability
+
+        Random rand = new Random(System.currentTimeMillis());
+
+        int i=0;
+
+        for (boolean val : features_used) {
+            double randomValue = rand.nextDouble(); //0.0 to 0.99
+            if (randomValue <= mutation_probability) {
+                features_used[i] = !features_used[i]; // flip bit
+            }
+            i++;
+        }
+
+        return features_used;
+
+
+    }
+
     double[] mutateVector(double[] feature_vector, double mutation_probability) {
         // Mutates the input vector according to the probability
         // Note, the more elements in the vector (feature list), the less the vector probability should be

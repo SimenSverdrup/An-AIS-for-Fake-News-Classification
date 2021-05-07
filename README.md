@@ -11,6 +11,7 @@ Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
 * GSON version 2.8.5
 * Java-JSON (org.json)
 * Stanford CoreNLP version 4.2.0
+* Stanford CoreNLP SRParser (Shift-Reduce Parser for speedup during sentiment analysis)
 * JavaFX version 15.0.1
 
 ### Python:
