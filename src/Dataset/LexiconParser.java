@@ -2,24 +2,35 @@ package Dataset;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+
+import static Features.FeatureExtractor.STRONGLY_SUBJECTIVE_PATH;
 
 public class LexiconParser {
     public String path = "";
-    public String[] lexicon;
-    public final int length = 1383;
+    public List<String> lexicon;
 
-    public String[] parse(String path) {
+    public List<String> parse(String path) {
         this.path = path;
-        this.lexicon = new String[length];
+        this.lexicon = new ArrayList<>();
 
-        int i = 0;
         try {
             File myObj = new File(this.path);
             Scanner myReader = new Scanner(myObj);
             while (myReader.hasNextLine()) {
-                this.lexicon[i] = myReader.nextLine();
-                i++;
+                this.lexicon.add(myReader.nextLine());
+                if (path.equals(STRONGLY_SUBJECTIVE_PATH)) {
+                    String line = myReader.nextLine();
+                    if (line.startsWith("type=strongsubj")) {
+                        // We only want the strongly subjective terms
+                        String word = "";
+                        int i = 28;
+                        while (line.charAt(i) != ' ') i++;
+                        this.lexicon.add(line.substring(28, i));
+                    }
+                }
             }
             myReader.close();
         } catch (FileNotFoundException e) {

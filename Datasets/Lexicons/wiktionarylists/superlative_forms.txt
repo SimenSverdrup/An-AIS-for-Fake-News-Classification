@@ -2302,5 +2302,3 @@ scowliest
 accuratest
 pouffiest
 spazziest
-fewest_and_farthest_between
-fewest_and_furthest_between

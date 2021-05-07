@@ -3,6 +3,7 @@ package Features;
 
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.CoreDocument;
+import edu.stanford.nlp.pipeline.CoreSentence;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 
 import java.util.*;
@@ -35,6 +36,56 @@ public class Tokenizer {
         }
 
         return tokenized_text;
+    }
+
+    public List<String> tokenizeTextAndRemoveCharacters(String raw_text) {
+        // ONLY tokenize the input text and remove unwanted characters
+
+        // set up pipeline properties
+        Properties props = new Properties();
+        // set the list of annotators to run
+        props.setProperty("annotators", "tokenize");
+
+        // build pipeline
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+        // create a document object
+        CoreDocument document = pipeline.processToCoreDocument(raw_text);
+
+        List<String> tokenized_and_removed_characters_text = new ArrayList<>();
+
+
+        for (CoreLabel tok : document.tokens()) {
+            // Remove unwanted characters and stop words
+            String word = tok.word();
+                if (Arrays.stream(unwanted_characters).noneMatch(word::equals)) {
+                    tokenized_and_removed_characters_text.add(tok.word());
+                }
+        }
+
+        return tokenized_and_removed_characters_text;
+    }
+
+    public List<String> tokenizeTextAndSplitSentences(String raw_text) {
+        // Split into sentences
+
+        List<String> sentence_split_text = new ArrayList<>();
+
+        // set up pipeline properties
+        Properties props = new Properties();
+        // set the list of annotators to run
+        props.setProperty("annotators", "tokenize,ssplit");
+
+        // build pipeline
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+        // create a document object
+        CoreDocument document = pipeline.processToCoreDocument(raw_text);
+
+        for (CoreSentence sentence : document.sentences()) {
+            sentence_split_text.add(sentence.text());
+            //System.out.println("SENTENCE: " + sentence);
+        }
+
+        return sentence_split_text;
     }
 
     public List<String> tokenizeAndProcessText(String raw_text) {

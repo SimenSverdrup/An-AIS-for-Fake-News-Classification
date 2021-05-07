@@ -21,6 +21,8 @@ public class Antigen {
     public String[] wine_classes = {"1", "2", "3"};
     public String[] spirals_classes = {"0", "1", "2"};
     public String[] diabetes_classes = {"0", "1"};
+    public String[] sonar_classes = {"Mine", "Rock"};
+    public String[] ionosphere_classes = {"g", "b"};
 
     public int number_of_classes;
     public String predicted_class;  // the predicted class of the antigen, after all antibodies have voted and decided
@@ -37,10 +39,12 @@ public class Antigen {
     public List<Double> affinities; // the affinities to the antibodies (must be in the same order as antibodies)
     public List<Double> sorted_affinities; // the affinities to the antibodies (in increasing order)
 
-    public List<String> tokenized_text;
-    public List<String> tokenized_and_processed_text;
-    public double TF;
-    public double TFIDF;
+    public List<String> tokenized_text; // only tokenized
+    public List<String> tokenized_and_partly_processed_text; // tokenized and removed unwanted
+    public List<String> tokenized_and_fully_processed_text;
+    public List<String> processed_headline;
+    public List<String> sentence_split_text;
+    public int sentence_count;
     public int word_count; // number of words in raw_text
 
     public String raw_text;
@@ -66,34 +70,57 @@ public class Antigen {
                 this.raw_text = record.get(6); // full text
                 this.sources = record.get(4).split(", ");
                 this.number_of_classes = 2;
-                parseSources();
+                //parseSources();
 
                 Tokenizer tokenizer = new Tokenizer();
+                this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
+                this.sentence_split_text = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_count = this.sentence_split_text.size();
+                this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
+                this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case LIAR -> {
+                String temp = record.get(record.size() - 1).toLowerCase();
+                this.true_class = temp;
+
                 if (binary_class_LIAR) {
                     this.classes = this.fake_news_binary_classes.clone();
                     this.number_of_classes = 2;
+                    switch (temp) {
+                        case "true":
+                            this.true_class = "real";
+                        case "mostly-true":
+                            this.true_class = "real";
+                        case "half-true":
+                            this.true_class = "real";
+                        case "mostly-false":
+                            this.true_class = "fake";
+                        case "false":
+                            this.true_class = "fake";
+                        case "pants-fire":
+                            this.true_class = "fake";
+                    }
                 }
                 else {
                     this.classes = this.LIAR_classes;
                     this.number_of_classes = 6;
                 }
 
-                this.true_class = record.get(record.size() - 1).toLowerCase();
                 this.id = record.get(0);
                 this.speaker = record.get(2); // speaker
                 this.headline = record.get(3); // headline
                 this.sources = record.get(4).split(", ");
                 this.raw_text = record.get(6); // full text (useful for BERT?)
-                parseSources();
+                //parseSources();
 
                 Tokenizer tokenizer = new Tokenizer();
+                this.processed_headline = tokenizer.tokenizeText(this.headline);
                 this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
-                this.tokenized_and_processed_text = tokenizer.tokenizeAndProcessText(this.raw_text);
-                System.out.println(this.tokenized_text);
+                this.sentence_split_text = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_count = this.sentence_split_text.size();
+                this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
+                this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
             }
             case WINE -> {
                 // WINE dataset has class label at first index
@@ -122,6 +149,14 @@ public class Antigen {
             }
             case DIABETES -> {
                 this.classes = this.diabetes_classes.clone();
+                this.true_class = record.get(this.number_of_features); // last index in row
+                for (int index=0; index < this.number_of_features; index++) {
+                    this.feature_list[index] = Double.parseDouble(record.get(index));
+                }
+                this.number_of_classes = 2;
+            }
+            case SONAR -> {
+                this.classes = this.sonar_classes.clone();
                 this.true_class = record.get(this.number_of_features); // last index in row
                 for (int index=0; index < this.number_of_features; index++) {
                     this.feature_list[index] = Double.parseDouble(record.get(index));
