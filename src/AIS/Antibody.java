@@ -14,6 +14,7 @@ public class Antibody {
     public int number_of_classes;   // number of classes
     public double RR_radius;
     public double[] feature_list; // note, length not equal to raw_list - as these are the floating feature values
+    public boolean[] features_used; // the features used (local feature selection)
     public List<Antigen> connected_antigens; // the antigens which this antibody is connected to (within RR)
     public List<Double> affinities; // the affinities to the antigens (must be in the same order as antigens)
     public double fitness;
@@ -40,6 +41,11 @@ public class Antibody {
         this.connected_antigens = new ArrayList<>();
         this.affinities = new ArrayList<>();
         this.number_of_classes = antigen.number_of_classes;
+
+        this.features_used = new boolean[this.feature_list.length];
+        for (int i=0; i<this.feature_list.length; i++) {
+            features_used[i] = true;
+        }
     }
 
     public Antibody(Antibody antibody) {
@@ -49,6 +55,7 @@ public class Antibody {
         this.id = antibody.id;
 
         this.feature_list = antibody.feature_list.clone();
+        this.features_used = antibody.features_used.clone();
         this.RR_radius = antibody.RR_radius;
         this.number_of_classes = antibody.number_of_classes;
         this.true_class = antibody.true_class;
@@ -78,7 +85,7 @@ public class Antibody {
         this.affinities = new ArrayList<>();
 
         for (Antigen ag : antigens) {
-            double affinity = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
+            double affinity = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius, this.features_used);
             if (affinity > 0) {
                 // The antigen is within the RR
                 this.affinities.add(affinity);
@@ -157,7 +164,7 @@ public class Antibody {
                 }
                 else {
                     // Set antibody RR radius to euclidean distance to closest ag of DIFFERENT class (but not including)
-                    this.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, this.feature_list) - 0.001, this.RR_radius);
+                    this.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, this.feature_list, this.features_used) - 0.001, this.RR_radius);
                 }
             }
             max_val = max_val*1.1;
@@ -173,6 +180,7 @@ public class Antibody {
         Random rand = new Random(System.currentTimeMillis());
         Mutate mut = new Mutate();
         this.id = String.valueOf((int) Math.floor(rand.nextInt(1000000)));
+        float features_used_probability = 1/ (float) (1+this.feature_list.length);
 
         double previous_RR = this.RR_radius;
         double[] previous_feature_list = this.feature_list.clone();
@@ -181,6 +189,12 @@ public class Antibody {
             this.RR_radius = mut.mutateScalar(this.RR_radius, scalar_mutation_prob);
             this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob);
         } while ((this.RR_radius == previous_RR) && Arrays.equals(this.feature_list, previous_feature_list));
+
+        for (int i=0; i<features_used.length; i++) {
+            // randomly mutate which features to use (mutation is not forced, like for RR radius and feature values)
+            double random = Math.random();
+            if (random < features_used_probability) features_used[i] = !features_used[i]; // flip bit
+        }
     }
 
     public void setParentIndex(int index) {
@@ -194,12 +208,12 @@ public class Antibody {
     public void calculateAffinity(Antigen ag) {
         Affinity aff = new Affinity();
 
-        this.single_aff = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius);
+        this.single_aff = aff.CalculateAffinity(ag.feature_list, this.feature_list, this.RR_radius, this.features_used);
     }
 
     public double calculateAffinity(Antibody other_ab) {
         Affinity aff = new Affinity();
 
-        return aff.CalculateAffinity(other_ab.feature_list, this.feature_list, this.RR_radius);
+        return aff.CalculateAffinity(other_ab.feature_list, this.feature_list, this.RR_radius, this.features_used);
     }
 }

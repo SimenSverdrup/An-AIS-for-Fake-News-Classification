@@ -29,5 +29,5 @@ Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
 
 ## Running the Model
 * Run (full path to BERT model needed) in terminal:
-    bert-serving-start -model_dir=/YOUR_MODEL -http_port 8125
+bert-serving-start -pooling_strategy=REDUCE_MEAN -model_dir=C:\Users\simen\Documents\A_Studier\Masteroppgave\Kode\Masteropg\cased_L-12_H-768_A-12 -http_port 8125
 * Simply run main.java

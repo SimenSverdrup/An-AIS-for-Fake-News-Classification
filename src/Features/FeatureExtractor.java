@@ -36,8 +36,7 @@ public class FeatureExtractor {
     public boolean[] features;
     public int number_of_features = 0;
 
-    public static final String BAD_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt"; // long
-    public static final String SWEAR_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\swear-words.txt"; // quite short
+    public static final String SWEAR_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt";
     public static final String MODAL_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\modal_adverbs.txt";
     public static final String ACTION_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\act_adverbs.txt";
     public static final String MANNER_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\manner_adverbs.txt";
@@ -64,91 +63,91 @@ public class FeatureExtractor {
         int index = 0;
 
         if (this.features[0]) {
-            antigens = TF(antigens, index, BAD_WORDS_PATH);
-            index++;
-        }
-        if (this.features[1]) {
             antigens = wordCount(antigens, index);
             index++;
         }
-        if (this.features[2]) {
+        if (this.features[1]) {
             antigens = secondPersonTF(antigens, index);
             index++;
         }
-        if (this.features[3]) {
+        if (this.features[2]) {
             antigens = TF(antigens, index, MODAL_ADVERBS_PATH);
             index++;
         }
-        if (this.features[4]) {
+        if (this.features[3]) {
             antigens = TF(antigens, index, ACTION_ADVERBS_PATH);
             index++;
         }
-        if (this.features[5]) {
+        if (this.features[4]) {
             antigens = FirstPersonTF(antigens, index);
             index++;
         }
-        if (this.features[6]) {
+        if (this.features[5]) {
             antigens = TF(antigens, index, MANNER_ADVERBS_PATH);
             index++;
         }
-        if (this.features[7]) {
+        if (this.features[6]) {
             antigens = TF(antigens, index, STRONG_SUPERLATIVES_PATH);
             index++;
         }
-        if (this.features[8]) {
+        if (this.features[7]) {
             antigens = TF(antigens, index, COMPARATIVES_PATH);
             index++;
         }
-        if (this.features[9]) {
+        if (this.features[8]) {
             antigens = TF(antigens, index, SWEAR_WORDS_PATH);
             index++;
         }
-        if (this.features[10]) {
+        if (this.features[9]) {
             antigens = numbersCounter(antigens, index);
             index++;
         }
-        if (this.features[11]) {
+        if (this.features[10]) {
             antigens = TF(antigens, index, NEGATIONS_PATH);
             index++;
         }
-        if (this.features[12]) {
+        if (this.features[11]) {
             antigens = TF(antigens, index, NEGATIVE_OPINION_WORDS_PATH);
             index++;
         }
-        if (this.features[13]) {
+        if (this.features[12]) {
             antigens = calculateFKGradeLevel(antigens, index);
             index++;
         }
-        if (this.features[14]) {
+        if (this.features[13]) {
             antigens = TF(antigens, index, STRONGLY_SUBJECTIVE_PATH);
             index++;
         }
-        if (this.features[15]) {
+        if (this.features[14]) {
             antigens = quotationMarks(antigens, index);
             index++;
         }
-        if (this.features[16]) {
+        if (this.features[15]) {
             antigens = exclamationAndQuestionMarks(antigens, index);
             index++;
         }
-        if (this.features[17]) {
+        if (this.features[16]) {
             antigens = TF(antigens, index, POSITIVE_WORDS_PATH);
             index++;
         }
-        if (this.features[18]) {
+        if (this.features[17]) {
             antigens = calculateReadingEase(antigens, index);
             index++;
         }
-        if (this.features[19]) {
+        if (this.features[18]) {
             antigens = unreliableSources(antigens, index);
             index++;
         }
-        if (this.features[20]) {
+        if (this.features[19]) {
             antigens = divisiveTopics(antigens, index);
             index++;
         }
-        if (this.features[21]) {
+        if (this.features[20]) {
             antigens = googleFactCheck(antigens, index);
+            index++;
+        }
+        if (this.features[21]) {
+            antigens = wordEmbeddings(antigens, index, false);
             index++;
         }
         if (this.features[22]) {
@@ -156,14 +155,10 @@ public class FeatureExtractor {
             index++;
         }
         if (this.features[23]) {
-            antigens = wordEmbeddings(antigens, index, false);
-            index++;
-        }
-        if (this.features[24]) {
             antigens = sentimentAnalysis(antigens, index, false);
             index++;
         }
-        if (this.features[25]) {
+        if (this.features[24]) {
             antigens = sentimentAnalysis(antigens, index, true);
             index++;
         }
@@ -528,7 +523,7 @@ public class FeatureExtractor {
 
             for (String word : speaker) {
                 for (String token : unreliable_sources) {
-                    if (word.equals(token)) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
                         ag.feature_list[index] = 1;
                         break;
                     }
@@ -548,7 +543,7 @@ public class FeatureExtractor {
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_text) {
                 for (String token : divisive_topics) {
-                    if (word.equals(token)) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
                         matches++;
                     }
                 }
@@ -572,13 +567,23 @@ public class FeatureExtractor {
         // Note: calculated term frequency of first person singular ("I") on the tokenized and PARTLY PROCESSED raw text (not lemmatized + stop word removed)
 
         int matches = 0;
+        String[] first_person_pronouns = {"i", "me", "my", "mine", "myself"};
+
 
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_and_partly_processed_text) {
-                if (word.toLowerCase(Locale.ROOT).equals("i")) matches++;
+                for (String token : first_person_pronouns) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
+                        matches++;
+                    }
+                }
             }
             for (String word : ag.processed_headline) {
-                if (word.toLowerCase(Locale.ROOT).equals("i")) matches += 2; // consider matches here to carry double the importance
+                for (String token : first_person_pronouns) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
+                        matches += 2; // consider matches here to carry double the importance
+                    }
+                }
             }
             ag.feature_list[index] = 10*matches/(double) (ag.tokenized_and_partly_processed_text.size() + ag.processed_headline.size());
 

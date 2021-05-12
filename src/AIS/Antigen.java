@@ -187,7 +187,7 @@ public class Antigen {
         Affinity aff = new Affinity();
 
         for (Antibody ab : antibodies) {
-            double affinity = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius);
+            double affinity = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius, ab.features_used);
             if (affinity > 0) {
                 // The antibody is within the RR
                 this.affinities.add(affinity);
@@ -238,7 +238,7 @@ public class Antigen {
             // No antibody is connected, let the one with lowest distance/RR radius decide
             double min_ratio = 1000;
             for (Antibody ab : antibodies) {
-                if ((aff.CalculateDistance(this.feature_list, ab.feature_list) / ab.RR_radius) < min_ratio) {
+                if ((aff.CalculateDistance(this.feature_list, ab.feature_list, ab.features_used) / ab.RR_radius) < min_ratio) {
                     this.predicted_class = ab.true_class;
                 }
             }
