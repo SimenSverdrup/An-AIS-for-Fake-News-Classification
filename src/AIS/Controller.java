@@ -46,10 +46,10 @@ public class Controller {
 
     public final boolean plot_testing_set = false; // false for plotting training set instead
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = LIAR; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 13; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 100;
+    public final int max_lines = 50;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -61,22 +61,22 @@ public class Controller {
             false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
             false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
             false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
-            false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
+            true, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
             false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Negations - "Behind the cues" (made myself)
             false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
+            true, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
             false, // Strongly subjective words - (MPQA)
             false, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
-            false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
             false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
             false, // Google Fact Check API hash value - Found myself
-            true, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
+            false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
-            false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            true, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
             false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
 
     };
@@ -86,7 +86,7 @@ public class Controller {
 
         List<List<String>> list = parser.getData();
 
-        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR)) {
+        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR) || this.dataset.equals(KAGGLE)) {
             list.remove(0); // remove headers
             this.number_of_features = 0;
 
@@ -95,12 +95,12 @@ public class Controller {
                     this.number_of_features++;
                 }
             }
-            if (features_used[22]) {
+            if (features_used[21]) {
                 // 768-field word embeddings are used
                 this.number_of_features += 767;
                 this.negative_vals = true;
             }
-            if (features_used[23]) {
+            if (features_used[22]) {
                 this.number_of_features += 1534; // add an additional 767*2 feature values (first and last sentence of full text)
                 this.negative_vals = true;
             }
@@ -164,7 +164,7 @@ public class Controller {
             }
 
             // Extract features and initialise antibodies
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
             }
 
@@ -461,7 +461,7 @@ public class Controller {
                     this.testing_antigens.clear();
                     this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                         this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                     }
 
@@ -530,7 +530,7 @@ public class Controller {
             this.testing_antigens.clear();
             this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                 this.testing_antigens = fe.extractFeatures(this.testing_antigens);
             }
 

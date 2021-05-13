@@ -13,6 +13,7 @@ public class Parser {
     public static final String FAKENEWSNET_TRAIN_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_train.csv";
     public static final String FAKENEWSNET_TEST_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\FakeNewsNet\\fake news detection(FakeNewsNet)\\fnn_test.csv";
     public static final String LIAR_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\LIAR\\liar_train.csv";
+    public static final String KAGGLE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Kaggle\\train.csv";
     public static final String IRIS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\iris.data";
     public static final String WINE_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\wine.data";
     public static final String SPIRALS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\spirals.txt";
@@ -38,6 +39,10 @@ public class Parser {
             case LIAR -> {
                 this.path = LIAR_PATH;
                 this.data = parseLIAR(this.path, maxLines);
+            }
+            case KAGGLE -> {
+                this.path = KAGGLE_PATH;
+                this.data = parseKaggle(this.path, maxLines);
             }
             case IRIS -> {
                 this.path = IRIS_PATH;
@@ -189,6 +194,45 @@ public class Parser {
             while (((line = reader.readLine()) != null) && (lineNumber < maxLines )) {
                 record.append(line);
                 if (line.endsWith(",fake") || line.endsWith(",real") || line.endsWith("label_fnn")) {
+                    // end of record
+                    CSV_list.add(parseRecord(record.toString(), ','));
+                    record = new StringBuilder(); // reset
+                    lineNumber++;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("CSV parsing failed.", e);
+        } finally {
+            if (reader != null)
+                try {
+                    reader.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+        }
+
+        return CSV_list;
+    }
+
+    public static List<List<String>> parseKaggle(String path, int maxLines) throws FileNotFoundException {
+        // Parse raw CSV file to a list of lists (2D array) of Strings
+        // Because records stretch over multiple lines in datasets, we have to do some extra work
+
+        // Prepare
+        InputStream input = null;
+        input = new FileInputStream(path);
+        BufferedReader reader = null;
+        List<List<String>> CSV_list = new ArrayList<List<String>>();
+        String line = null;
+        StringBuilder record = new StringBuilder();
+        int lineNumber = 0;
+
+        // Parse
+        try {
+            reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.UTF_8));
+            while (((line = reader.readLine()) != null) && (lineNumber < maxLines )) {
+                record.append(line);
+                if (line.endsWith(",0") || line.endsWith(",1") || line.endsWith("label")) {
                     // end of record
                     CSV_list.add(parseRecord(record.toString(), ','));
                     record = new StringBuilder(); // reset

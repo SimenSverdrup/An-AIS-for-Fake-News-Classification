@@ -405,6 +405,8 @@ public class FeatureExtractor {
             for (String word : ag.tokenized_and_partly_processed_text) {
                 total_syllables += getSyllables(word);
             }
+            if (ag.sentence_count < 1) ag.sentence_count = 1;
+
             ag.feature_list[index] = 0.39 * ((float) (ag.tokenized_and_partly_processed_text.size()/ag.sentence_count)) +
                     11.8 * ((float) (total_syllables/ag.tokenized_and_partly_processed_text.size()))
                     - 15.59;
@@ -538,7 +540,7 @@ public class FeatureExtractor {
         // Finds occurrences of unreliable sources in speaker field
 
         int matches = 0;
-        String[] divisive_topics = {"vaccine", "syria", "truth", "freedom", "trump", "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy", "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion", "muslim", "islam", "gender"};
+        String[] divisive_topics = {"vaccine", "vaccines", "vaccinated", "syria", "truth", "freedom", "trump", "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy", "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion", "muslim", "islam", "gender"};
 
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_text) {
@@ -631,7 +633,7 @@ public class FeatureExtractor {
         // An extremely simple feature simply counting the words in the raw text
 
         for (Antigen ag : antigens) {
-            ag.word_count = ag.tokenized_and_partly_processed_text.size();
+            ag.word_count = ag.tokenized_and_partly_processed_text.size() + ag.processed_headline.size();
             ag.feature_list[index] = ag.word_count;
         }
 
