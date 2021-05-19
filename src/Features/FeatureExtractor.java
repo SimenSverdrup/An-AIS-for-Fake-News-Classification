@@ -212,7 +212,17 @@ public class FeatureExtractor {
         for (Antigen ag : antigens) {
             if (full_text) {
                 //System.out.println("Start sentiment processing");
-                String text = ag.sentence_split_text.get(0) + " " + ag.sentence_split_text.get(ag.sentence_count - 1);
+
+                String tail = ag.sentence_split_text.get(ag.sentence_count - 1);
+
+                int counter = 1;
+
+                while (tail.length() < 2) {
+                    counter++;
+                    tail = ag.sentence_split_text.get(ag.sentence_count - counter);
+                }
+
+                String text = ag.sentence_split_text.get(0) + " " + tail;
                 //System.out.println("Text (head+tail): " + text);
                 Annotation annotation = pipeline.process(text);
                 //System.out.println("Finished sentiment processing");
