@@ -147,18 +147,26 @@ public class FeatureExtractor {
             index++;
         }
         if (this.features[21]) {
-            antigens = wordEmbeddings(antigens, index, false);
+            antigens = wordEmbeddings(antigens, index, false, true, false, false);
             index++;
         }
         if (this.features[22]) {
-            antigens = wordEmbeddings(antigens, index, true);
+            antigens = wordEmbeddings(antigens, index, true, false, false, false);
             index++;
         }
         if (this.features[23]) {
-            antigens = sentimentAnalysis(antigens, index, false);
+            antigens = wordEmbeddings(antigens, index, false, false, true, false);
             index++;
         }
         if (this.features[24]) {
+            antigens = wordEmbeddings(antigens, index, false, false, false, true);
+            index++;
+        }
+        if (this.features[25]) {
+            antigens = sentimentAnalysis(antigens, index, false);
+            index++;
+        }
+        if (this.features[26]) {
             antigens = sentimentAnalysis(antigens, index, true);
             index++;
         }
@@ -231,7 +239,7 @@ public class FeatureExtractor {
     }
 
 
-    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean full_text) throws JSONException {
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean full_text, boolean headline, boolean head, boolean tail) throws JSONException {
         // Compute word embeddings with Bert-as-a-service
 
         String base_url = "http://0.0.0.0:8125/encode";
@@ -242,15 +250,19 @@ public class FeatureExtractor {
         if (full_text) {
             // use head and tail sentence of articles
             for (Antigen ag : antigens) {
-                String[] text = new String[2];
+                String[] texts = new String[2];
 
-                text[0] = ag.sentence_split_text.get(0);
-                text[1] = ag.sentence_split_text.get(ag.sentence_count - 1);
+                texts[0] = ag.sentence_split_text.get(0);
+                texts[1] = ag.sentence_split_text.get(ag.sentence_count - 1);
+
                 int counter = 1;
-                do {
-                    text[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
+
+                while (texts[1].length() < 2) {
+                    texts[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
                     counter++;
-                } while (text[1].length() < 2);
+                }
+
+                String[] text = {texts[0] + texts[1]};
 
                 JSONObject json = new JSONObject();
                 json.put("id", 123);
@@ -291,10 +303,9 @@ public class FeatureExtractor {
                 }
             }
         }
-
-        else {
+        else if (headline) {
             // headlines
-            System.out.println("Getting word embeddings...");
+            System.out.println("Getting text embedding...");
             for (Antigen ag : antigens) {
                 String[] text = {ag.headline};
 
@@ -312,6 +323,102 @@ public class FeatureExtractor {
                     //System.out.println("JSON: " + json);
                     //System.out.println("POST request: " + post.getEntity());
                     //System.out.println("POST request content: " + post.getEntity().getContent());
+
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
+
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+                        //JSONObject response_json = new JSONObject(responseString);
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
+
+                        try {
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = 0;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response for this antigen");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
+        }
+        else if (head) {
+            // use head and tail sentence of articles
+            for (Antigen ag : antigens) {
+                String[] text = {ag.sentence_split_text.get(0)};
+
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
+
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
+
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
+
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+                        //JSONObject response_json = new JSONObject(responseString);
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
+
+                        try {
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            }
+                        } catch (Exception e) {
+                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
+                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                                ag.feature_list[ag_idx] = 0;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response for this antigen");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
+        }
+        else if (tail) {
+            // use head and tail sentence of articles
+            for (Antigen ag : antigens) {
+                String[] text = {ag.sentence_split_text.get(ag.sentence_count - 1)};
+
+                int counter = 1;
+                while (text[0].length() < 2) {
+                    text[0] = ag.sentence_split_text.get(ag.sentence_count - counter);
+                    counter++;
+                }
+
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
+
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
 
                     HttpResponse response = httpClient.execute(post);
                     HttpEntity entity = response.getEntity();

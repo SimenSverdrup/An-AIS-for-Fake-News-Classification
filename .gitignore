@@ -9,6 +9,7 @@ Datasets/LIAR/liar_dev.csv
 Datasets/Kaggle/train.csv
 Datasets/Kaggle/test.csv
 cased_L-12_H-768_A-12/
+uncased_L-12_H-768_A-12/
 httpclient-4.4.1.jar
 httpcore-4.4.14.jar
 commons-logging-1.2.jar

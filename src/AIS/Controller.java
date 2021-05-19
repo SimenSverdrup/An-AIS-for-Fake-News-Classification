@@ -76,9 +76,10 @@ public class Controller {
             false, // Google Fact Check API hash value - Found myself
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
+            false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             true, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
             false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
-
     };
 
     public void run() throws Exception {
@@ -96,12 +97,23 @@ public class Controller {
                 }
             }
             if (features_used[21]) {
-                // 768-field word embeddings are used
+                // 768-field text embeddings are used
                 this.number_of_features += 767;
                 this.negative_vals = true;
             }
             if (features_used[22]) {
-                this.number_of_features += 1534; // add an additional 767*2 feature values (first and last sentence of full text)
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
+                this.negative_vals = true;
+            }
+            if (features_used[23]) {
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
+                this.negative_vals = true;
+            }
+            if (features_used[24]) {
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
                 this.negative_vals = true;
             }
         }
