@@ -13,6 +13,7 @@ Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
 * Stanford CoreNLP version 4.2.0
 * Stanford CoreNLP SRParser (Shift-Reduce Parser for speedup during sentiment analysis)
 * JavaFX version 15.0.1
+* JavaMI version 1.1
 
 ### Python:
 * Python version 3.6.5 (3.5 <= version < 3.8 should work too)
@@ -28,6 +29,6 @@ Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
 
 
 ## Running the Model
-* Run (full path to BERT model needed) in terminal:
+* Run (full path to BERT model needed) in Anaconda prompt terminal:
 bert-serving-start -pooling_strategy=REDUCE_MEAN -model_dir=C:\Users\simen\Documents\A_Studier\Masteroppgave\Kode\Masteropg\cased_L-12_H-768_A-12 -http_port 8125
 * Simply run main.java

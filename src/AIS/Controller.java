@@ -5,13 +5,8 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
-import GUI.GUI;
-import javafx.application.Application;
-import javafx.stage.Stage;
-import javafx.util.Pair;
+import Testing.MutualInfo;
 
-import java.io.FileNotFoundException;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -31,17 +26,18 @@ public class Controller {
     public ArrayList<Antigen> training_antigens; // antigens used for training (this iteration)
     public ArrayList<Antigen> testing_antigens; // antigens used for testing (this iteration)
     public ArrayList<Antibody> worst_performing_abs;
+    public int tournament_size;
 
-    public final int k = 3;   // k-fold cross validation split
+    public final int k = 2;   // k-fold cross validation split TODO change
     public final double antibody_ratio = 1.0;
     public final double max_antibody_replacement_ratio = 0.1;
-    public final int number_of_clones = 10; // number of clones per antibody
+    public final int number_of_clones = 15; // number of clones per antibody
     public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
     public double feature_vector_mutation_probability;
     public double RR_radius_mutation_probability;
     public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
     public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 300;
+    public final int generations = 1; // TODO change
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = false; // false for plotting training set instead
@@ -49,37 +45,37 @@ public class Controller {
     public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 13; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 50;
+    public final int max_lines = 2000;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
-            false, // Word count - Newman et al. (2003)
-            false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
-            false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
-            false, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
-            false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
-            false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
-            false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
+            true, // Word count - Newman et al. (2003)
+            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            true, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
+            true, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
+            true, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
+            true, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
+            true, // Superlatives - "Truth of varying shades" (Rashkin et al.)
+            true, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
             true, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
-            false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            false, // Negations - "Behind the cues" (made myself)
-            false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            true, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            true, // Negations - "Behind the cues" (made myself)
+            true, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             true, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            false, // Strongly subjective words - (MPQA)
-            false, // Quotation marks TF (found from manual review of the articles)
-            false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
-            false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            false, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            true, // Strongly subjective words - (MPQA)
+            true, // Quotation marks TF (found from manual review of the articles)
+            true, // Exclamation + question marks TF (\citep{FakeNewsRumors})
+            true, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            true, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
             false, // Google Fact Check API hash value - Found myself
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             true, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
-            false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            true, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
 
     public void run() throws Exception {
@@ -153,7 +149,7 @@ public class Controller {
         Affinity aff = new Affinity();
 
         // Shuffle the antigens
-        this.antigens = shuffleAntigens(this.antigens);
+        //this.antigens = shuffleAntigens(this.antigens); // TODO note
 
         this.antigens_split = new Antigen[k][(int) Math.floor(this.antigens.length/(float) k)];
 
@@ -180,13 +176,42 @@ public class Controller {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
             }
 
-            for (Antigen ag : this.training_antigens) {
+            //for (Antigen ag : this.training_antigens) {
                 //System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
                 //System.out.println("Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
                 //System.out.println("Speaker: " + ag.speaker);
                 //System.out.println("Headline: " + ag.headline);
-            }
+            //}
+
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
+
+
+
+            System.out.println("\n------------------\nStarting MI");
+            System.out.println("Number of samples: " + this.training_antigens.size());
+            double[][] features = new double[this.number_of_features][this.training_antigens.size()];
+            MutualInfo mi = new MutualInfo();
+
+            int count = 0;
+            for (Antigen ag : this.training_antigens) {
+                for (int u = 0; u < this.number_of_features; u++) {
+                    features[u][count] = ag.feature_list[u];
+                }
+                count++;
+            }
+
+            for (int u = 0; u < this.number_of_features; u++) {
+                System.out.println("\nFeature " + (u+1) + ": ");
+                for (int v = 0; v < this.number_of_features; v++) {
+                    double mutualInformation = mi.calculateMutualInformation(features[u], features[v]);
+                    System.out.println(mutualInformation);
+                }
+
+            }
+            System.out.println("------------------");
+
+
+
 
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
@@ -218,7 +243,7 @@ public class Controller {
             }
 
             for (Antibody ab : this.antibodies) {
-                // Initialise anitbody RR radii
+                // Initialise antibody RR radii
 
                 ab.RR_radius = 1000;
 
@@ -247,6 +272,7 @@ public class Controller {
 
             ArrayList<Antibody> clones = new ArrayList<>();
             List<Antibody> abs_to_be_deleted = new ArrayList<>();
+            this.tournament_size = this.antibodies.size()/10;
 
             // Begin the training
             for (int generation=1; generation<=this.generations; generation++) {
@@ -269,14 +295,14 @@ public class Controller {
                     //System.out.println("\nFeatures used by this ab: " + Arrays.toString(ab.features_used));
                 }
 
-                HashMap<Integer, Double> fitnesses = new HashMap<>();
+                //HashMap<Integer, Double> fitnesses = new HashMap<>();
 
-                int ab_index = 0;
+                //int ab_index = 0;
 
-                for (Antibody ab : this.antibodies) {
-                    fitnesses.put(ab_index, ab.fitness);
-                    ab_index++;
-                }
+                //for (Antibody ab : this.antibodies) {
+                //    fitnesses.put(ab_index, ab.fitness);
+                //    ab_index++;
+                //}
 
 
                 /*
@@ -379,10 +405,32 @@ public class Controller {
                 */
 
                 int antibody_clones_left = number_of_new_antibodies;
+                List<Integer> abs_selected_for_reproduction = new ArrayList<>();
+
 
                 while (antibody_clones_left > 0) {
-                    int max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    fitnesses.remove(max_key);
+
+                    HashMap<Integer, Double> tournament = new HashMap<>();
+                    List<Integer> selected_for_tournament = new ArrayList<>();
+
+                    for (int j=0; j<this.tournament_size; j++) {
+                        int indx = (int) (Math.random()*this.antibodies.size());
+
+                        while (selected_for_tournament.contains(indx)) {
+                            indx = (int) (Math.random()*this.antibodies.size());
+                        }
+                        tournament.put(indx, this.antibodies.get(indx).fitness);
+                        selected_for_tournament.add(indx);
+                    }
+
+                    int max_key = Collections.max(tournament.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    while ((abs_selected_for_reproduction.contains(max_key)) && (tournament.size() > 1)) {
+                        tournament.remove(max_key);
+                        max_key = Collections.max(tournament.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    }
+
+                    abs_selected_for_reproduction.add(max_key);
+
                     for (int num=0; num<this.number_of_clones; num++) {
                         clones.add(new Antibody(this.antibodies.get(max_key)));
                     }
@@ -395,22 +443,13 @@ public class Controller {
                     clone.mutate(this.feature_vector_mutation_probability, this.RR_radius_mutation_probability);
                 }
 
-
-                fitnesses.clear();
-                ab_index = 0;
                 int number_of_abs_to_be_deleted = number_of_new_antibodies;
 
-                for (Antigen ag : this.training_antigens) {
-                    // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
-                    ag.findConnectedAntibodies(this.antibodies);
-                }
+                HashMap<Integer, Double> fitnesses = new HashMap<>();
+
+                int ab_index = 0;
 
                 for (Antibody ab : this.antibodies) {
-                    ab.findConnectedAntigens(this.training_antigens);
-                }
-
-                for (Antibody ab : this.antibodies) {
-                    ab.calculateFitness(this.training_antigens);
                     fitnesses.put(ab_index, ab.fitness);
                     ab_index++;
                 }
@@ -434,14 +473,10 @@ public class Controller {
 
                 ArrayList<Antigen> antigens_copy = this.training_antigens;
 
-                for (Antibody clone : clones) {
-                    clone.findConnectedAntigens(antigens_copy);
-                }
-
-
                 fitnesses.clear();
                 int clone_index = 0;
                 for (Antibody clone : clones) {
+                    clone.findConnectedAntigens(antigens_copy);
                     clone.calculateFitness(antigens_copy);
                     fitnesses.put(clone_index, clone.fitness);
                     clone_index++;

@@ -65,110 +65,155 @@ public class FeatureExtractor {
         if (this.features[0]) {
             antigens = wordCount(antigens, index);
             index++;
+            System.out.println("Finished feature 0");
         }
         if (this.features[1]) {
             antigens = secondPersonTF(antigens, index);
             index++;
+            System.out.println("Finished feature 1");
         }
         if (this.features[2]) {
             antigens = TF(antigens, index, MODAL_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 2");
         }
         if (this.features[3]) {
             antigens = TF(antigens, index, ACTION_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 3");
         }
         if (this.features[4]) {
             antigens = FirstPersonTF(antigens, index);
             index++;
+            System.out.println("Finished feature 4");
         }
         if (this.features[5]) {
             antigens = TF(antigens, index, MANNER_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 5");
         }
         if (this.features[6]) {
             antigens = TF(antigens, index, STRONG_SUPERLATIVES_PATH);
             index++;
+            System.out.println("Finished feature 6");
         }
         if (this.features[7]) {
             antigens = TF(antigens, index, COMPARATIVES_PATH);
             index++;
+            System.out.println("Finished feature 7");
+
         }
         if (this.features[8]) {
             antigens = TF(antigens, index, SWEAR_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 8");
         }
         if (this.features[9]) {
             antigens = numbersCounter(antigens, index);
             index++;
+            System.out.println("Finished feature 9");
+
         }
         if (this.features[10]) {
             antigens = TF(antigens, index, NEGATIONS_PATH);
             index++;
+            System.out.println("Finished feature 10");
+
         }
         if (this.features[11]) {
             antigens = TF(antigens, index, NEGATIVE_OPINION_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 11");
+
         }
         if (this.features[12]) {
             antigens = calculateFKGradeLevel(antigens, index);
             index++;
+            System.out.println("Finished feature 12");
         }
         if (this.features[13]) {
             antigens = TF(antigens, index, STRONGLY_SUBJECTIVE_PATH);
             index++;
+            System.out.println("Finished feature 13");
+
         }
         if (this.features[14]) {
             antigens = quotationMarks(antigens, index);
             index++;
+            System.out.println("Finished feature 14");
+
         }
         if (this.features[15]) {
             antigens = exclamationAndQuestionMarks(antigens, index);
             index++;
+            System.out.println("Finished feature 15");
+
         }
         if (this.features[16]) {
             antigens = TF(antigens, index, POSITIVE_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 16");
+
         }
         if (this.features[17]) {
             antigens = calculateReadingEase(antigens, index);
             index++;
+            System.out.println("Finished feature 17");
+
         }
         if (this.features[18]) {
             antigens = unreliableSources(antigens, index);
             index++;
+            System.out.println("Finished feature 18");
+
         }
         if (this.features[19]) {
             antigens = divisiveTopics(antigens, index);
             index++;
+            System.out.println("Finished feature 19");
+
         }
         if (this.features[20]) {
             antigens = googleFactCheck(antigens, index);
             index++;
+            System.out.println("Finished feature 20");
+
         }
         if (this.features[21]) {
             antigens = wordEmbeddings(antigens, index, false, true, false, false);
             index++;
+            System.out.println("Finished feature 21");
+
         }
         if (this.features[22]) {
             antigens = wordEmbeddings(antigens, index, true, false, false, false);
             index++;
+            System.out.println("Finished feature 22");
+
         }
         if (this.features[23]) {
             antigens = wordEmbeddings(antigens, index, false, false, true, false);
             index++;
+            System.out.println("Finished feature 23");
+
         }
         if (this.features[24]) {
             antigens = wordEmbeddings(antigens, index, false, false, false, true);
             index++;
+            System.out.println("Finished feature 24");
+
         }
         if (this.features[25]) {
             antigens = sentimentAnalysis(antigens, index, false);
             index++;
+            System.out.println("Finished feature 25");
+
         }
         if (this.features[26]) {
             antigens = sentimentAnalysis(antigens, index, true);
             index++;
+            System.out.println("Finished feature 26");
+
         }
 
 
@@ -217,7 +262,7 @@ public class FeatureExtractor {
 
                 int counter = 1;
 
-                while (tail.length() < 2) {
+                while ((tail.length() < 2) && (ag.sentence_split_text.size() > counter+1)) {
                     counter++;
                     tail = ag.sentence_split_text.get(ag.sentence_count - counter);
                 }
