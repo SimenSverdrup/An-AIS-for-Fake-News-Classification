@@ -26,10 +26,7 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.net.*;
 import java.net.http.HttpRequest;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
+import java.util.*;
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
@@ -181,25 +178,25 @@ public class FeatureExtractor {
         }
         if (this.features[21]) {
             antigens = wordEmbeddings(antigens, index, false, true, false, false);
-            index++;
+            index+=768;
             System.out.println("Finished feature 21");
 
         }
         if (this.features[22]) {
             antigens = wordEmbeddings(antigens, index, true, false, false, false);
-            index++;
+            index+=768;
             System.out.println("Finished feature 22");
 
         }
         if (this.features[23]) {
             antigens = wordEmbeddings(antigens, index, false, false, true, false);
-            index++;
+            index+=768;
             System.out.println("Finished feature 23");
 
         }
         if (this.features[24]) {
             antigens = wordEmbeddings(antigens, index, false, false, false, true);
-            index++;
+            index+=768;
             System.out.println("Finished feature 24");
 
         }
@@ -262,7 +259,7 @@ public class FeatureExtractor {
 
                 int counter = 1;
 
-                while ((tail.length() < 2) && (ag.sentence_split_text.size() > counter+1)) {
+                while ((tail.length() < 2) && (ag.sentence_split_text.size() > counter + 1)) {
                     counter++;
                     tail = ag.sentence_split_text.get(ag.sentence_count - counter);
                 }
@@ -312,7 +309,7 @@ public class FeatureExtractor {
 
                 int counter = 1;
 
-                while (texts[1].length() < 2) {
+                while ((texts[1].length() < 2) && (counter + 1 < ag.sentence_count)) {
                     texts[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
                     counter++;
                 }
@@ -338,18 +335,16 @@ public class FeatureExtractor {
 
                         JsonParser parser = new JsonParser();
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
-                        JsonArray array1 = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
-                        JsonArray array2 = json_obj.getAsJsonArray("result").get(1).getAsJsonArray();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        for (int idx = index; idx < ag.feature_list.length; idx++) {
-                            if (idx < index + array1.size()) {
-                                ag.feature_list[idx] = Double.parseDouble(array1.get(idx - index).toString());
-                            }
-                            else {
-                                ag.feature_list[idx] = Double.parseDouble(array2.get(idx - (index + array1.size())).toString());
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
+                                ag.feature_list[ag_idx] = 0;
                             }
                         }
-                        //System.out.println("Feature list: " + Arrays.toString(ag.feature_list));
                     } catch (Exception e) {
                         System.out.println("Problems parsing BERT response");
                     }
@@ -390,13 +385,11 @@ public class FeatureExtractor {
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
                         JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        try {
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
                                 ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
                                 ag.feature_list[ag_idx] = 0;
                             }
                         }
@@ -435,13 +428,11 @@ public class FeatureExtractor {
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
                         JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        try {
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
                                 ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
                                 ag.feature_list[ag_idx] = 0;
                             }
                         }
@@ -486,13 +477,11 @@ public class FeatureExtractor {
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
                         JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        try {
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
                                 ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
-                            }
-                        } catch (Exception e) {
-                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
                                 ag.feature_list[ag_idx] = 0;
                             }
                         }

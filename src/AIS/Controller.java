@@ -45,37 +45,37 @@ public class Controller {
     public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 13; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = true;
-    public final int max_lines = 2000;
+    public final int max_lines = 600;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
-            true, // Word count - Newman et al. (2003)
-            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            true, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
-            true, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
-            true, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
-            true, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
-            true, // Superlatives - "Truth of varying shades" (Rashkin et al.)
-            true, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
-            true, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
-            true, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            true, // Negations - "Behind the cues" (made myself)
-            true, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            true, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            true, // Strongly subjective words - (MPQA)
-            true, // Quotation marks TF (found from manual review of the articles)
-            true, // Exclamation + question marks TF (\citep{FakeNewsRumors})
-            true, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
-            true, // Flesch Reading Ease - \citep{linguistic-feature-based}
-            false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            true, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
-            false, // Google Fact Check API hash value - Found myself
+            false, // Word count - Newman et al. (2003)
+            false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
+            false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
+            false, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
+            false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
+            false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
+            false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
+            false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
+            false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            false, // Negations - "Behind the cues" (made myself)
+            false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
+            false, // Strongly subjective words - (MPQA)
+            false, // Quotation marks TF (found from manual review of the articles)
+            false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
+            false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Flesch Reading Ease - \citep{linguistic-feature-based}
+            false, //**DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
+            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            false, //**DROPPED** Google Fact Check API hash value - Found myself
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
-            false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            true, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
-            true, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
-            true, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
 
     public void run() throws Exception {
@@ -170,6 +170,8 @@ public class Controller {
                     this.training_antigens.addAll(Arrays.asList(this.antigens_split[idx]));
                 }
             }
+            System.out.println("Number of samples: " + this.training_antigens.size());
+
 
             // Extract features and initialise antibodies
             if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
@@ -187,10 +189,31 @@ public class Controller {
 
 
 
+
+            // Calculate mutual information (MI)
             System.out.println("\n------------------\nStarting MI");
-            System.out.println("Number of samples: " + this.training_antigens.size());
-            double[][] features = new double[this.number_of_features][this.training_antigens.size()];
             MutualInfo mi = new MutualInfo();
+
+            double[] mutual_informations = new double[this.training_antigens.size()];
+
+            int count = 0;
+
+            for (Antigen ag : this.training_antigens) {
+                double[] feature1 = Arrays.copyOfRange(ag.feature_list, 0, 768);
+                //double[] feature2 = Arrays.copyOfRange(ag.feature_list, 768, ag.feature_list.length);
+
+                mutual_informations[count] = mi.calculateMutualInformation(feature1, feature1);
+                count++;
+            }
+
+            double sum = 0;
+            for (double val : mutual_informations) {
+                sum += val;
+            }
+
+            System.out.println("Average: " + (sum/mutual_informations.length));
+
+            /*double[][] features = new double[this.number_of_features][this.training_antigens.size()];
 
             int count = 0;
             for (Antigen ag : this.training_antigens) {
@@ -206,8 +229,7 @@ public class Controller {
                     double mutualInformation = mi.calculateMutualInformation(features[u], features[v]);
                     System.out.println(mutualInformation);
                 }
-
-            }
+            }*/
             System.out.println("------------------");
 
 
