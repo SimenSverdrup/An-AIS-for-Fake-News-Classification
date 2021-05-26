@@ -8,6 +8,7 @@ Datasets/LIAR/liar_test.csv
 Datasets/LIAR/liar_dev.csv
 Datasets/Kaggle/train.csv
 Datasets/Kaggle/test.csv
+Datasets/
 cased_L-12_H-768_A-12/
 uncased_L-12_H-768_A-12/
 httpclient-4.4.1.jar
@@ -17,3 +18,9 @@ gson-2.8.5.jar
 stanford-srparser-2014-10-23-models.jar
 stanford-corenlp-4.2.1-models-english.jar
 javaMI.jar
+javaml-0.1.7.jar
+ajt-2.9.jar
+commons-math-1.2.jar
+Jama-1.0.2.jar
+libsvm.jar
+weka.jar

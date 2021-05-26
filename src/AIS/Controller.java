@@ -5,7 +5,6 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
-import Testing.MutualInfo;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -28,24 +27,24 @@ public class Controller {
     public ArrayList<Antibody> worst_performing_abs;
     public int tournament_size;
 
-    public final int k = 2;   // k-fold cross validation split TODO change
+    public final int k = 5;   // k-fold cross validation split
     public final double antibody_ratio = 1.0;
     public final double max_antibody_replacement_ratio = 0.1;
-    public final int number_of_clones = 15; // number of clones per antibody
+    public final int number_of_clones = 10; // number of clones per antibody
     public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
     public double feature_vector_mutation_probability;
     public double RR_radius_mutation_probability;
     public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
     public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 1; // TODO change
+    public final int generations = 5; //TODO note
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = false; // false for plotting training set instead
     public final boolean VALIS_RR_radius_init_scheme = true;
     public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
-    public int number_of_features = 13; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
-    public final boolean binary_class_LIAR = true;
-    public final int max_lines = 600;
+    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
+    public final boolean binary_class_LIAR = false;
+    public final int max_lines = 500;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -67,9 +66,9 @@ public class Controller {
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
-            false, //**DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
-            false, //**DROPPED** Google Fact Check API hash value - Found myself
+            false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
+            false, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            false, // **DROPPED** Google Fact Check API hash value - Found myself
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             true, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
@@ -149,7 +148,7 @@ public class Controller {
         Affinity aff = new Affinity();
 
         // Shuffle the antigens
-        //this.antigens = shuffleAntigens(this.antigens); // TODO note
+        this.antigens = shuffleAntigens(this.antigens);
 
         this.antigens_split = new Antigen[k][(int) Math.floor(this.antigens.length/(float) k)];
 
@@ -176,6 +175,7 @@ public class Controller {
             // Extract features and initialise antibodies
             if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
+                System.out.println("Finished extracting features");
             }
 
             //for (Antigen ag : this.training_antigens) {
@@ -186,53 +186,20 @@ public class Controller {
             //}
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
+            System.out.println("Finished normalizing features");
 
 
-
+            // Calculate feature scoring
+            /*FeatureScoring fs = new FeatureScoring(this.dataset, this.number_of_features);
+            fs.outputDataset(this.training_antigens);
+            fs.getFeatureScores();*/
 
             // Calculate mutual information (MI)
-            System.out.println("\n------------------\nStarting MI");
+            /*System.out.println("\n------------------\nStarting MI");
             MutualInfo mi = new MutualInfo();
-
-            double[] mutual_informations = new double[this.training_antigens.size()];
-
-            int count = 0;
-
-            for (Antigen ag : this.training_antigens) {
-                double[] feature1 = Arrays.copyOfRange(ag.feature_list, 0, 768);
-                //double[] feature2 = Arrays.copyOfRange(ag.feature_list, 768, ag.feature_list.length);
-
-                mutual_informations[count] = mi.calculateMutualInformation(feature1, feature1);
-                count++;
-            }
-
-            double sum = 0;
-            for (double val : mutual_informations) {
-                sum += val;
-            }
-
-            System.out.println("Average: " + (sum/mutual_informations.length));
-
-            /*double[][] features = new double[this.number_of_features][this.training_antigens.size()];
-
-            int count = 0;
-            for (Antigen ag : this.training_antigens) {
-                for (int u = 0; u < this.number_of_features; u++) {
-                    features[u][count] = ag.feature_list[u];
-                }
-                count++;
-            }
-
-            for (int u = 0; u < this.number_of_features; u++) {
-                System.out.println("\nFeature " + (u+1) + ": ");
-                for (int v = 0; v < this.number_of_features; v++) {
-                    double mutualInformation = mi.calculateMutualInformation(features[u], features[v]);
-                    System.out.println(mutualInformation);
-                }
-            }*/
-            System.out.println("------------------");
-
-
+            mi.calculateTextEmbeddingMI(this.training_antigens);
+            mi.calculateSingleFeatureMI(this.training_antigens, this.number_of_features);
+            System.out.println("------------------");*/
 
 
             this.antibodies.clear();
