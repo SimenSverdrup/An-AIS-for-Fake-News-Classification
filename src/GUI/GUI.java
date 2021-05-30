@@ -183,7 +183,7 @@ public class GUI extends Application {
 
         ///// Accuracy plot //////
         NumberAxis xAxis = new NumberAxis("Generation", 1, this.controller.generations, 1);
-        NumberAxis yAxis = new NumberAxis("Accuracy", 0.5, 1.0, 0.01);
+        NumberAxis yAxis = new NumberAxis("Accuracy", 0.0, 1.0, 0.01);
 
         LineChart<Number, Number> graph = new LineChart<>(xAxis, yAxis);
         graph.setTitle("Accuracy per generation");

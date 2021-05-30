@@ -5,13 +5,7 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
-import GUI.GUI;
-import javafx.application.Application;
-import javafx.stage.Stage;
-import javafx.util.Pair;
 
-import java.io.FileNotFoundException;
-import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -31,37 +25,38 @@ public class Controller {
     public ArrayList<Antigen> training_antigens; // antigens used for training (this iteration)
     public ArrayList<Antigen> testing_antigens; // antigens used for testing (this iteration)
     public ArrayList<Antibody> worst_performing_abs;
+    public int tournament_size;
 
-    public final int k = 3;   // k-fold cross validation split
+    public final int k = 5;   // k-fold cross validation split
     public final double antibody_ratio = 1.0;
     public final double max_antibody_replacement_ratio = 0.1;
-    public final double antibody_replacement_decrease_factor = 1.5; // NOTE: du skriver at denne er statisk lik 1.5 i overleafen
-    public final double feature_vector_mutation_probability = 1/((double) this.number_of_features);
-    public final double RR_radius_mutation_probability = 0.5; // 1/((double) this.number_of_features);
-    public final double antigen_initialised_ratio = 0.9; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 0.1; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 300;
+    public final int number_of_clones = 10; // number of clones per antibody
+    public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
+    public double feature_vector_mutation_probability;
+    public double RR_radius_mutation_probability;
+    public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
+    public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
+    public final int generations = 300; //TODO note
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
-    public final boolean plot_testing_set = false; // false for plotting training set instead
+    public final boolean plot_testing_set = false; // false for plotting training set instead (plotting testing set is much more computationally extensive)
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = LIAR; //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
-    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
-    public final boolean binary_class_LIAR = true;
-    public final int max_lines = 25;
+    public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public int number_of_features = 8; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
+    public final boolean binary_class_LIAR = false;
+    public final int max_lines = 1000;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
-            false, // Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
             false, // Word count - Newman et al. (2003)
             false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
             false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
             false, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
             false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
-            false, // Strong superlatives - "Truth of varying shades" (Rashkin et al.)
+            false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
             false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
-            false, // Swear words - "Truth of varying shades" (Rashkin et al.)
+            false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
             false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Negations - "Behind the cues" (made myself)
             false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
@@ -69,13 +64,17 @@ public class Controller {
             false, // Strongly subjective words - (MPQA)
             false, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
-            false, // Positive words - lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
+            false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
-            false, // Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            false, // Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
-            false, // Google Fact Check API hash value - Found myself
+            false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon based on findings of Gravanis et al. (facebook posts, bloggers etc.)
+            false, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            false, // **DROPPED** Google Fact Check API hash value
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
-            true, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
+            false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
+            false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            true, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
 
     public void run() throws Exception {
@@ -83,7 +82,7 @@ public class Controller {
 
         List<List<String>> list = parser.getData();
 
-        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR)) {
+        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR) || this.dataset.equals(KAGGLE)) {
             list.remove(0); // remove headers
             this.number_of_features = 0;
 
@@ -92,17 +91,30 @@ public class Controller {
                     this.number_of_features++;
                 }
             }
+            if (features_used[21]) {
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
+                this.negative_vals = true;
+            }
             if (features_used[22]) {
-                // 768-field word embeddings are used
+                // 768-field text embeddings are used
                 this.number_of_features += 767;
                 this.negative_vals = true;
             }
             if (features_used[23]) {
-                this.number_of_features += 1534; // add an additional 767*2 feature values (first and last sentence of full text)
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
+                this.negative_vals = true;
+            }
+            if (features_used[24]) {
+                // 768-field text embeddings are used
+                this.number_of_features += 767;
                 this.negative_vals = true;
             }
         }
 
+        this.feature_vector_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
+        this.RR_radius_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
         int number_of_records = list.size();
         this.antigens = new Antigen[number_of_records];
         this.training_antigens = new ArrayList<>();
@@ -157,10 +169,13 @@ public class Controller {
                     this.training_antigens.addAll(Arrays.asList(this.antigens_split[idx]));
                 }
             }
+            System.out.println("Number of samples: " + this.training_antigens.size());
+
 
             // Extract features and initialise antibodies
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                 this.training_antigens = fe.extractFeatures(this.training_antigens);
+                System.out.println("Finished extracting features");
             }
 
             //for (Antigen ag : this.training_antigens) {
@@ -169,7 +184,23 @@ public class Controller {
                 //System.out.println("Speaker: " + ag.speaker);
                 //System.out.println("Headline: " + ag.headline);
             //}
+
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
+            System.out.println("Finished normalizing features");
+
+
+            // Calculate feature scoring
+            /*FeatureScoring fs = new FeatureScoring(this.dataset, this.number_of_features);
+            fs.outputDataset(this.training_antigens);
+            fs.getFeatureScores();*/
+
+            // Calculate mutual information (MI)
+            /*System.out.println("\n------------------\nStarting MI");
+            MutualInfo mi = new MutualInfo();
+            mi.calculateTextEmbeddingMI(this.training_antigens);
+            mi.calculateSingleFeatureMI(this.training_antigens, this.number_of_features);
+            System.out.println("------------------");*/
+
 
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
@@ -201,6 +232,8 @@ public class Controller {
             }
 
             for (Antibody ab : this.antibodies) {
+                // Initialise antibody RR radii
+
                 ab.RR_radius = 1000;
 
                 if (this.VALIS_RR_radius_init_scheme) {
@@ -211,7 +244,7 @@ public class Controller {
                         int random_index = rand.nextInt(this.training_antigens.size());
 
                         if (this.training_antigens.get(random_index).true_class.equals(ab.true_class)) {
-                            ab.RR_radius = aff.CalculateDistance(this.training_antigens.get(random_index).feature_list, ab.feature_list) + 0.001;
+                            ab.RR_radius = aff.CalculateDistance(this.training_antigens.get(random_index).feature_list, ab.feature_list, ab.features_used) + 0.001;
                             break;
                         }
                     }
@@ -220,14 +253,15 @@ public class Controller {
                     for (Antigen ag : antigens) {
                         if (!ag.true_class.equals(ab.true_class)) {
                             // Set antibody RR radius to euclidean distance to closest ag of DIFFERENT class (but not including the ag)
-                            ab.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, ab.feature_list) - 0.001, ab.RR_radius);
+                            ab.RR_radius = Math.min(aff.CalculateDistance(ag.feature_list, ab.feature_list, ab.features_used) - 0.001, ab.RR_radius);
                         }
                     }
                 }
             }
 
-            List<Antibody> clones = new ArrayList<>();
+            ArrayList<Antibody> clones = new ArrayList<>();
             List<Antibody> abs_to_be_deleted = new ArrayList<>();
+            this.tournament_size = this.antibodies.size()/10;
 
             // Begin the training
             for (int generation=1; generation<=this.generations; generation++) {
@@ -247,16 +281,17 @@ public class Controller {
                 for (Antibody ab : this.antibodies) {
                     ab.findConnectedAntigens(this.training_antigens);
                     ab.calculateFitness(this.training_antigens);
+                    //System.out.println("\nFeatures used by this ab: " + Arrays.toString(ab.features_used));
                 }
 
-                HashMap<Integer, Double> fitnesses = new HashMap<>();
+                //HashMap<Integer, Double> fitnesses = new HashMap<>();
 
-                int ab_index = 0;
+                //int ab_index = 0;
 
-                for (Antibody ab : this.antibodies) {
-                    fitnesses.put(ab_index, ab.fitness);
-                    ab_index++;
-                }
+                //for (Antibody ab : this.antibodies) {
+                //    fitnesses.put(ab_index, ab.fitness);
+                //    ab_index++;
+                //}
 
 
                 /*
@@ -359,11 +394,35 @@ public class Controller {
                 */
 
                 int antibody_clones_left = number_of_new_antibodies;
+                List<Integer> abs_selected_for_reproduction = new ArrayList<>();
+
 
                 while (antibody_clones_left > 0) {
-                    int max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
-                    fitnesses.remove(max_key);
-                    clones.add(new Antibody(this.antibodies.get(max_key)));
+
+                    HashMap<Integer, Double> tournament = new HashMap<>();
+                    List<Integer> selected_for_tournament = new ArrayList<>();
+
+                    for (int j=0; j<this.tournament_size; j++) {
+                        int indx = (int) (Math.random()*this.antibodies.size());
+
+                        while ((selected_for_tournament.contains(indx) || (abs_selected_for_reproduction.contains(indx)))) {
+                            indx = (int) (Math.random()*this.antibodies.size());
+                        }
+                        tournament.put(indx, this.antibodies.get(indx).fitness);
+                        selected_for_tournament.add(indx);
+                    }
+
+                    int max_key = Collections.max(tournament.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    while ((abs_selected_for_reproduction.contains(max_key)) && (tournament.size() > 1)) {
+                        tournament.remove(max_key);
+                        max_key = Collections.max(tournament.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    }
+
+                    abs_selected_for_reproduction.add(max_key);
+
+                    for (int num=0; num<this.number_of_clones; num++) {
+                        clones.add(new Antibody(this.antibodies.get(max_key)));
+                    }
 
                     antibody_clones_left--;
                 }
@@ -373,22 +432,13 @@ public class Controller {
                     clone.mutate(this.feature_vector_mutation_probability, this.RR_radius_mutation_probability);
                 }
 
-
-                fitnesses.clear();
-                ab_index = 0;
                 int number_of_abs_to_be_deleted = number_of_new_antibodies;
 
-                for (Antigen ag : this.training_antigens) {
-                    // Need to find the affinity vector for each antigen, in order to accurately calculate the fitness of each ab
-                    ag.findConnectedAntibodies(this.antibodies);
-                }
+                HashMap<Integer, Double> fitnesses = new HashMap<>();
+
+                int ab_index = 0;
 
                 for (Antibody ab : this.antibodies) {
-                    ab.findConnectedAntigens(this.training_antigens);
-                }
-
-                for (Antibody ab : this.antibodies) {
-                    ab.calculateFitness(this.training_antigens);
                     fitnesses.put(ab_index, ab.fitness);
                     ab_index++;
                 }
@@ -408,6 +458,35 @@ public class Controller {
                 }
 
 
+
+
+                ArrayList<Antigen> antigens_copy = this.training_antigens;
+
+                fitnesses.clear();
+                int clone_index = 0;
+                for (Antibody clone : clones) {
+                    clone.findConnectedAntigens(antigens_copy);
+                    clone.calculateFitness(antigens_copy);
+                    fitnesses.put(clone_index, clone.fitness);
+                    clone_index++;
+                }
+
+                List<Antibody> clones_to_be_deleted = new ArrayList<>();
+                int clone_size = clones.size();
+
+                while (clone_size > abs_to_be_deleted.size()) {
+                    // Find antibodies in clones with poorest fitness
+                    int min_key = Collections.min(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    fitnesses.remove(min_key);
+                    clones_to_be_deleted.add(clones.get(min_key));
+
+                    clone_size--;
+                }
+
+                for (Antibody clone : clones_to_be_deleted) {
+                    clones.remove(clone);
+                }
+
                 // Add the new clones
                 this.antibodies.addAll(clones);
 
@@ -418,7 +497,7 @@ public class Controller {
                     this.testing_antigens.clear();
                     this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                         this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                     }
 
@@ -487,7 +566,7 @@ public class Controller {
             this.testing_antigens.clear();
             this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR)) {
+            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
                 this.testing_antigens = fe.extractFeatures(this.testing_antigens);
             }
 
@@ -648,9 +727,7 @@ public class Controller {
         double[] feature_vector2 = {0.22, 0.30, 0.70};
 
         Affinity aff = new Affinity();
-        double num = aff.CalculateAffinity(feature_vector1, feature_vector2, 100);
 
-        System.out.println(num);
     }
 
     public void TestNormaliser() {
@@ -664,7 +741,7 @@ public class Controller {
         double[] vector = {0.35, 0.35, 0.68, 0.44, 0.33};
         System.out.println("Old list: " + Arrays.toString(vector));
 
-        Mutate mutate = new Mutate();
+        /*Mutate mutate = new Mutate();
         double[] vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
@@ -682,7 +759,7 @@ public class Controller {
 
         System.out.println("Old value: " + 0.5);
         double val = mutate.mutateScalar(0.5, 0.6);
-        System.out.println("New value: " + val);
+        System.out.println("New value: " + val);*/
     }
 
     public void TestHasher() {

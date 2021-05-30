@@ -4,8 +4,15 @@ import AIS.Antigen;
 import Dataset.LexiconParser;
 
 import com.google.gson.*;
-import org.apache.http.HttpEntity;
+import edu.stanford.nlp.ling.CoreAnnotations;
+import edu.stanford.nlp.neural.rnn.RNNCoreAnnotations;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.sentiment.SentimentCoreAnnotations;
+import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.util.CoreMap;
 
+import org.apache.http.HttpEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -19,17 +26,14 @@ import org.json.JSONObject;
 import java.io.IOException;
 import java.net.*;
 import java.net.http.HttpRequest;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
 public class FeatureExtractor {
     // Class for extracting feature values, which features to extract is specified in the constructor
     public boolean[] features;
     public int number_of_features = 0;
 
-    public static final String BAD_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt"; // long
-    public static final String SWEAR_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\swear-words.txt"; // quite short
+    public static final String SWEAR_WORDS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\bad-words.txt";
     public static final String MODAL_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\modal_adverbs.txt";
     public static final String ACTION_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\act_adverbs.txt";
     public static final String MANNER_ADVERBS_PATH = "C:\\Users\\simen\\Documents\\A_Studier\\Masteroppgave\\Kode\\Masteropg\\Datasets\\Lexicons\\wiktionarylists\\manner_adverbs.txt";
@@ -56,100 +60,157 @@ public class FeatureExtractor {
         int index = 0;
 
         if (this.features[0]) {
-            antigens = TF(antigens, index, BAD_WORDS_PATH);
-            index++;
-        }
-        if (this.features[1]) {
             antigens = wordCount(antigens, index);
             index++;
+            System.out.println("Finished feature 0");
         }
-        if (this.features[2]) {
+        if (this.features[1]) {
             antigens = secondPersonTF(antigens, index);
             index++;
+            System.out.println("Finished feature 1");
         }
-        if (this.features[3]) {
+        if (this.features[2]) {
             antigens = TF(antigens, index, MODAL_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 2");
         }
-        if (this.features[4]) {
+        if (this.features[3]) {
             antigens = TF(antigens, index, ACTION_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 3");
         }
-        if (this.features[5]) {
+        if (this.features[4]) {
             antigens = FirstPersonTF(antigens, index);
             index++;
+            System.out.println("Finished feature 4");
         }
-        if (this.features[6]) {
+        if (this.features[5]) {
             antigens = TF(antigens, index, MANNER_ADVERBS_PATH);
             index++;
+            System.out.println("Finished feature 5");
         }
-        if (this.features[7]) {
+        if (this.features[6]) {
             antigens = TF(antigens, index, STRONG_SUPERLATIVES_PATH);
             index++;
+            System.out.println("Finished feature 6");
         }
-        if (this.features[8]) {
+        if (this.features[7]) {
             antigens = TF(antigens, index, COMPARATIVES_PATH);
             index++;
+            System.out.println("Finished feature 7");
+
         }
-        if (this.features[9]) {
+        if (this.features[8]) {
             antigens = TF(antigens, index, SWEAR_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 8");
         }
-        if (this.features[10]) {
+        if (this.features[9]) {
             antigens = numbersCounter(antigens, index);
             index++;
+            System.out.println("Finished feature 9");
+
         }
-        if (this.features[11]) {
+        if (this.features[10]) {
             antigens = TF(antigens, index, NEGATIONS_PATH);
             index++;
+            System.out.println("Finished feature 10");
+
         }
-        if (this.features[12]) {
+        if (this.features[11]) {
             antigens = TF(antigens, index, NEGATIVE_OPINION_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 11");
+
         }
-        if (this.features[13]) {
+        if (this.features[12]) {
             antigens = calculateFKGradeLevel(antigens, index);
             index++;
+            System.out.println("Finished feature 12");
         }
-        if (this.features[14]) {
+        if (this.features[13]) {
             antigens = TF(antigens, index, STRONGLY_SUBJECTIVE_PATH);
             index++;
+            System.out.println("Finished feature 13");
+
         }
-        if (this.features[15]) {
+        if (this.features[14]) {
             antigens = quotationMarks(antigens, index);
             index++;
+            System.out.println("Finished feature 14");
+
         }
-        if (this.features[16]) {
+        if (this.features[15]) {
             antigens = exclamationAndQuestionMarks(antigens, index);
             index++;
+            System.out.println("Finished feature 15");
+
         }
-        if (this.features[17]) {
+        if (this.features[16]) {
             antigens = TF(antigens, index, POSITIVE_WORDS_PATH);
             index++;
+            System.out.println("Finished feature 16");
+
         }
-        if (this.features[18]) {
+        if (this.features[17]) {
             antigens = calculateReadingEase(antigens, index);
             index++;
+            System.out.println("Finished feature 17");
+
         }
-        if (this.features[19]) {
+        if (this.features[18]) {
             antigens = unreliableSources(antigens, index);
             index++;
+            System.out.println("Finished feature 18");
+
         }
-        if (this.features[20]) {
+        if (this.features[19]) {
             antigens = divisiveTopics(antigens, index);
             index++;
+            System.out.println("Finished feature 19");
+
         }
-        if (this.features[21]) {
+        if (this.features[20]) {
             antigens = googleFactCheck(antigens, index);
             index++;
+            System.out.println("Finished feature 20");
+
+        }
+        if (this.features[21]) {
+            antigens = wordEmbeddings(antigens, index, false, true, false, false);
+            index+=768;
+            System.out.println("Finished feature 21");
+
         }
         if (this.features[22]) {
-            antigens = wordEmbeddings(antigens, index, true, false);
-            index++;
+            antigens = wordEmbeddings(antigens, index, true, false, false, false);
+            index+=768;
+            System.out.println("Finished feature 22");
+
         }
         if (this.features[23]) {
-            antigens = wordEmbeddings(antigens, index, false, true);
+            antigens = wordEmbeddings(antigens, index, false, false, true, false);
+            index+=768;
+            System.out.println("Finished feature 23");
+
+        }
+        if (this.features[24]) {
+            antigens = wordEmbeddings(antigens, index, false, false, false, true);
+            index+=768;
+            System.out.println("Finished feature 24");
+
+        }
+        if (this.features[25]) {
+            antigens = sentimentAnalysis(antigens, index, false);
             index++;
+            System.out.println("Finished feature 25");
+
+        }
+        if (this.features[26]) {
+            antigens = sentimentAnalysis(antigens, index, true);
+            index++;
+            System.out.println("Finished feature 26");
+
         }
 
 
@@ -181,8 +242,56 @@ public class FeatureExtractor {
         return antigens;
     }
 
+    public ArrayList<Antigen> sentimentAnalysis(ArrayList<Antigen> antigens, int index, boolean full_text) {
+        // Calculate sentiment analysis with Stanford CoreNLP
+        // Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
 
-    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean headline, boolean full_text) throws IOException, JSONException, InterruptedException {
+        Properties props = new Properties();
+        props.setProperty("annotators", "tokenize, ssplit, pos, parse, sentiment");
+        props.setProperty("parse.model", "edu/stanford/nlp/models/srparser/englishSR.ser.gz");
+        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+
+        for (Antigen ag : antigens) {
+            if (full_text) {
+                //System.out.println("Start sentiment processing");
+
+                String tail = ag.sentence_split_text.get(ag.sentence_count - 1);
+
+                int counter = 1;
+
+                while ((tail.length() < 2) && (ag.sentence_split_text.size() > counter + 1)) {
+                    counter++;
+                    tail = ag.sentence_split_text.get(ag.sentence_count - counter);
+                }
+
+                String text = ag.sentence_split_text.get(0) + " " + tail;
+                //System.out.println("Text (head+tail): " + text);
+                Annotation annotation = pipeline.process(text);
+                //System.out.println("Finished sentiment processing");
+
+                for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
+                    Tree tree = sentence.get(SentimentCoreAnnotations.SentimentAnnotatedTree.class);
+                    ag.feature_list[index] = RNNCoreAnnotations.getPredictedClass(tree);
+                }
+                //System.out.println("Feature value: " + ag.feature_list[index]);
+            }
+            else {
+                //System.out.println("Text (headline): " + ag.headline);
+                Annotation annotation = pipeline.process(ag.headline);
+
+                for (CoreMap sentence : annotation.get(CoreAnnotations.SentencesAnnotation.class)) {
+                    Tree tree = sentence.get(SentimentCoreAnnotations.SentimentAnnotatedTree.class);
+                    ag.feature_list[index] = RNNCoreAnnotations.getPredictedClass(tree);
+                }
+
+            }
+        }
+
+        return antigens;
+    }
+
+
+    public ArrayList<Antigen> wordEmbeddings(ArrayList<Antigen> antigens, int index, boolean full_text, boolean headline, boolean head, boolean tail) throws JSONException {
         // Compute word embeddings with Bert-as-a-service
 
         String base_url = "http://0.0.0.0:8125/encode";
@@ -193,15 +302,19 @@ public class FeatureExtractor {
         if (full_text) {
             // use head and tail sentence of articles
             for (Antigen ag : antigens) {
-                String[] text = new String[2];
+                String[] texts = new String[2];
 
-                text[0] = ag.sentence_split_text.get(0);
-                text[1] = ag.sentence_split_text.get(ag.sentence_count - 1);
+                texts[0] = ag.sentence_split_text.get(0);
+                texts[1] = ag.sentence_split_text.get(ag.sentence_count - 1);
+
                 int counter = 1;
-                do {
-                    text[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
+
+                while ((texts[1].length() < 2) && (counter + 1 < ag.sentence_count)) {
+                    texts[1] = ag.sentence_split_text.get(ag.sentence_count - counter);
                     counter++;
-                } while (text[1].length() < 2);
+                }
+
+                String[] text = {texts[0] + texts[1]};
 
                 JSONObject json = new JSONObject();
                 json.put("id", 123);
@@ -222,18 +335,16 @@ public class FeatureExtractor {
 
                         JsonParser parser = new JsonParser();
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
-                        JsonArray array1 = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
-                        JsonArray array2 = json_obj.getAsJsonArray("result").get(1).getAsJsonArray();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        for (int idx = index; idx < ag.feature_list.length; idx++) {
-                            if (idx < index + array1.size()) {
-                                ag.feature_list[idx] = Double.parseDouble(array1.get(idx - index).toString());
-                            }
-                            else {
-                                ag.feature_list[idx] = Double.parseDouble(array2.get(idx - (index + array1.size())).toString());
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
+                                ag.feature_list[ag_idx] = 0;
                             }
                         }
-                        //System.out.println("Feature list: " + Arrays.toString(ag.feature_list));
                     } catch (Exception e) {
                         System.out.println("Problems parsing BERT response");
                     }
@@ -242,10 +353,9 @@ public class FeatureExtractor {
                 }
             }
         }
-
-        else {
+        else if (headline) {
             // headlines
-            System.out.println("Getting word embeddings...");
+            System.out.println("Getting text embedding...");
             for (Antigen ag : antigens) {
                 String[] text = {ag.headline};
 
@@ -275,13 +385,103 @@ public class FeatureExtractor {
                         JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
                         JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
 
-                        try {
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
                                 ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
+                                ag.feature_list[ag_idx] = 0;
                             }
-                        } catch (Exception e) {
-                            System.out.println("Problems copying data to ag feature vector. Setting feature values to 0.");
-                            for (int ag_idx = index; ag_idx < ag.feature_list.length; ag_idx++) {
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response for this antigen");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
+        }
+        else if (head) {
+            // use head and tail sentence of articles
+            for (Antigen ag : antigens) {
+                String[] text = {ag.sentence_split_text.get(0)};
+
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
+
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
+
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
+
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+                        //JSONObject response_json = new JSONObject(responseString);
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
+
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
+                                ag.feature_list[ag_idx] = 0;
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Problems parsing BERT response for this antigen");
+                    }
+                } catch (Exception ex) {
+                    System.out.println("Problems connecting to local BERT server");
+                }
+            }
+        }
+        else if (tail) {
+            // use head and tail sentence of articles
+            for (Antigen ag : antigens) {
+                String[] text = {ag.sentence_split_text.get(ag.sentence_count - 1)};
+
+                int counter = 1;
+                while (text[0].length() < 2) {
+                    text[0] = ag.sentence_split_text.get(ag.sentence_count - counter);
+                    counter++;
+                }
+
+                JSONObject json = new JSONObject();
+                json.put("id", 123);
+                json.put("texts", text);
+                json.put("is_tokenized", false);
+
+                try {
+                    HttpPost post = new HttpPost(base_url);
+                    post.setHeader("Content-type", "application/json");
+                    post.setHeader("Accept", "application/json");
+                    post.setEntity(new StringEntity(json.toString()));
+
+                    HttpResponse response = httpClient.execute(post);
+                    HttpEntity entity = response.getEntity();
+
+                    try {
+                        String responseString = EntityUtils.toString(entity, "UTF-8");
+                        //JSONObject response_json = new JSONObject(responseString);
+
+                        JsonParser parser = new JsonParser();
+                        JsonObject json_obj = parser.parse(responseString).getAsJsonObject();
+                        JsonArray array = json_obj.getAsJsonArray("result").get(0).getAsJsonArray();
+
+                        for (int ag_idx = index; ag_idx < array.size()+index; ag_idx++) {
+                            try {
+                                ag.feature_list[ag_idx] = Double.parseDouble(array.get(ag_idx - index).toString());
+                            } catch (Exception e) {
+                                System.out.println("Problems parsing double to ag feature vector. Setting feature value to 0.");
                                 ag.feature_list[ag_idx] = 0;
                             }
                         }
@@ -356,6 +556,8 @@ public class FeatureExtractor {
             for (String word : ag.tokenized_and_partly_processed_text) {
                 total_syllables += getSyllables(word);
             }
+            if (ag.sentence_count < 1) ag.sentence_count = 1;
+
             ag.feature_list[index] = 0.39 * ((float) (ag.tokenized_and_partly_processed_text.size()/ag.sentence_count)) +
                     11.8 * ((float) (total_syllables/ag.tokenized_and_partly_processed_text.size()))
                     - 15.59;
@@ -474,7 +676,7 @@ public class FeatureExtractor {
 
             for (String word : speaker) {
                 for (String token : unreliable_sources) {
-                    if (word.equals(token)) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
                         ag.feature_list[index] = 1;
                         break;
                     }
@@ -489,12 +691,12 @@ public class FeatureExtractor {
         // Finds occurrences of unreliable sources in speaker field
 
         int matches = 0;
-        String[] divisive_topics = {"vaccine", "syria", "truth", "freedom", "trump", "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy", "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion", "muslim", "islam", "gender"};
+        String[] divisive_topics = {"vaccine", "vaccines", "vaccinated", "syria", "truth", "freedom", "trump", "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy", "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion", "muslim", "islam", "gender"};
 
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_text) {
                 for (String token : divisive_topics) {
-                    if (word.equals(token)) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
                         matches++;
                     }
                 }
@@ -518,13 +720,23 @@ public class FeatureExtractor {
         // Note: calculated term frequency of first person singular ("I") on the tokenized and PARTLY PROCESSED raw text (not lemmatized + stop word removed)
 
         int matches = 0;
+        String[] first_person_pronouns = {"i", "me", "my", "mine", "myself"};
+
 
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_and_partly_processed_text) {
-                if (word.toLowerCase(Locale.ROOT).equals("i")) matches++;
+                for (String token : first_person_pronouns) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
+                        matches++;
+                    }
+                }
             }
             for (String word : ag.processed_headline) {
-                if (word.toLowerCase(Locale.ROOT).equals("i")) matches += 2; // consider matches here to carry double the importance
+                for (String token : first_person_pronouns) {
+                    if (word.toLowerCase(Locale.ROOT).equals(token)) {
+                        matches += 2; // consider matches here to carry double the importance
+                    }
+                }
             }
             ag.feature_list[index] = 10*matches/(double) (ag.tokenized_and_partly_processed_text.size() + ag.processed_headline.size());
 
@@ -572,7 +784,7 @@ public class FeatureExtractor {
         // An extremely simple feature simply counting the words in the raw text
 
         for (Antigen ag : antigens) {
-            ag.word_count = ag.tokenized_and_partly_processed_text.size();
+            ag.word_count = ag.tokenized_and_partly_processed_text.size() + ag.processed_headline.size();
             ag.feature_list[index] = ag.word_count;
         }
 

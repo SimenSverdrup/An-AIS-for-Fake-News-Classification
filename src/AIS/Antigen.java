@@ -80,6 +80,37 @@ public class Antigen {
                 this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
                 this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
             }
+            case KAGGLE -> {
+                this.classes = this.fake_news_binary_classes.clone();
+                String temp = record.get(record.size() - 1).toLowerCase();
+                switch (temp) {
+                    case "0":
+                        this.true_class = "real";
+                    case "1":
+                        this.true_class = "fake";
+                    default:
+                        if (temp.endsWith(",0")) this.true_class = "real";
+                        else if (temp.endsWith(",1")) this.true_class = "fake";
+                }
+
+                this.id = record.get(0);
+                this.headline = record.get(1); // headline
+                if (this.headline.length() < 1) this.headline = "This is an empty headline.";
+                this.speaker = record.get(2); // speaker
+                if (this.speaker.length() < 1) this.speaker = "No speaker.";
+                this.raw_text = record.get(3); // full text
+                if (this.raw_text.length() < 1) this.raw_text = "This is an empty text."; // empty dataset samples
+                this.number_of_classes = 2;
+                //parseSources();
+
+                Tokenizer tokenizer = new Tokenizer();
+                this.processed_headline = tokenizer.tokenizeText(this.headline);
+                this.tokenized_text = tokenizer.tokenizeText(this.raw_text);
+                this.sentence_split_text = tokenizer.tokenizeTextAndSplitSentences(this.raw_text);
+                this.sentence_count = this.sentence_split_text.size();
+                this.tokenized_and_partly_processed_text = tokenizer.tokenizeTextAndRemoveCharacters(this.raw_text);
+                this.tokenized_and_fully_processed_text = new ArrayList<>();//tokenizer.tokenizeAndProcessText(this.raw_text);
+            }
             case LIAR -> {
                 String temp = record.get(record.size() - 1).toLowerCase();
                 this.true_class = temp;
@@ -187,7 +218,7 @@ public class Antigen {
         Affinity aff = new Affinity();
 
         for (Antibody ab : antibodies) {
-            double affinity = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius);
+            double affinity = aff.CalculateAffinity(ab.feature_list, this.feature_list, ab.RR_radius, ab.features_used);
             if (affinity > 0) {
                 // The antibody is within the RR
                 this.affinities.add(affinity);
@@ -238,7 +269,7 @@ public class Antigen {
             // No antibody is connected, let the one with lowest distance/RR radius decide
             double min_ratio = 1000;
             for (Antibody ab : antibodies) {
-                if ((aff.CalculateDistance(this.feature_list, ab.feature_list) / ab.RR_radius) < min_ratio) {
+                if ((aff.CalculateDistance(this.feature_list, ab.feature_list, ab.features_used) / ab.RR_radius) < min_ratio) {
                     this.predicted_class = ab.true_class;
                 }
             }
