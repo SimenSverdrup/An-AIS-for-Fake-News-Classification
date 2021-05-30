@@ -22,16 +22,9 @@ public class Mutate {
     boolean[] mutateFeatureSubset(boolean[] features_used, double mutation_probability) {
         // Mutates the input vector according to the probability
 
-        Random rand = new Random(System.currentTimeMillis());
-
-        int i=0;
-
-        for (boolean val : features_used) {
-            double randomValue = rand.nextDouble(); //0.0 to 0.99
-            if (randomValue <= mutation_probability) {
-                features_used[i] = !features_used[i]; // flip bit
-            }
-            i++;
+        for (int i=0; i<features_used.length; i++) {
+            double random = Math.random();
+            if (random < mutation_probability) features_used[i] = !features_used[i]; // flip bit
         }
 
         return features_used;
@@ -39,7 +32,7 @@ public class Mutate {
 
     }
 
-    double[] mutateVector(double[] feature_vector, double mutation_probability) {
+    double[] mutateVector(double[] feature_vector, double mutation_probability, boolean[] features_used) {
         // Mutates the input vector according to the probability
         // Note, the more elements in the vector (feature list), the less the vector probability should be
         Random rand = new Random(System.currentTimeMillis());
@@ -47,16 +40,19 @@ public class Mutate {
         int i=0;
 
         for (double value : feature_vector) {
-            double randomValue = rand.nextDouble(); //0.0 to 0.99
-            if (randomValue <= mutation_probability) {
-                //double number = max_add * rand.nextDouble();
-                //double randomValue2 = rand.nextDouble();
-                //if (randomValue2 > 0.5) feature_vector[i] = feature_vector[i] - number;
-                //else feature_vector[i] = feature_vector[i] + number;
+            if (features_used[i]) {
+                // If the antibody considers this feature value
+                double randomValue = rand.nextDouble(); //0.0 to 0.99
+                if (randomValue <= mutation_probability) {
+                    //double number = max_add * rand.nextDouble();
+                    //double randomValue2 = rand.nextDouble();
+                    //if (randomValue2 > 0.5) feature_vector[i] = feature_vector[i] - number;
+                    //else feature_vector[i] = feature_vector[i] + number;
 
-                double coeff = range_min + (range_max - range_min) * rand.nextDouble();
-                if (value*coeff > 1.0) feature_vector[i] = 1.0;
-                else feature_vector[i] = Math.max(value * coeff, 0.0);
+                    double coeff = range_min + (range_max - range_min) * rand.nextDouble();
+                    if (value * coeff > 1.0) feature_vector[i] = 1.0;
+                    else feature_vector[i] = Math.max(value * coeff, 0.0);
+                }
             }
             i++;
         }

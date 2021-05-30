@@ -185,16 +185,13 @@ public class Antibody {
         double previous_RR = this.RR_radius;
         double[] previous_feature_list = this.feature_list.clone();
 
+        // randomly mutate which features to use (mutation is not forced, like for RR radius and feature values)
+        this.features_used = mut.mutateFeatureSubset(features_used, features_used_probability);
+
         do {
             this.RR_radius = mut.mutateScalar(this.RR_radius, scalar_mutation_prob);
-            this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob);
+            this.feature_list = mut.mutateVector(this.feature_list, vector_mutation_prob, this.features_used);
         } while ((this.RR_radius == previous_RR) && Arrays.equals(this.feature_list, previous_feature_list));
-
-        for (int i=0; i<features_used.length; i++) {
-            // randomly mutate which features to use (mutation is not forced, like for RR radius and feature values)
-            double random = Math.random();
-            if (random < features_used_probability) features_used[i] = !features_used[i]; // flip bit
-        }
     }
 
     public void setParentIndex(int index) {

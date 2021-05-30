@@ -36,15 +36,15 @@ public class Controller {
     public double RR_radius_mutation_probability;
     public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
     public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 5; //TODO note
+    public final int generations = 300; //TODO note
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
-    public final boolean plot_testing_set = false; // false for plotting training set instead
+    public final boolean plot_testing_set = false; // false for plotting training set instead (plotting testing set is much more computationally extensive)
     public final boolean VALIS_RR_radius_init_scheme = true;
     public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
-    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
+    public int number_of_features = 8; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = false;
-    public final int max_lines = 500;
+    public final int max_lines = 1000;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -66,13 +66,13 @@ public class Controller {
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
-            false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et al. (facebook posts, bloggers etc.)
+            false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon based on findings of Gravanis et al. (facebook posts, bloggers etc.)
             false, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
-            false, // **DROPPED** Google Fact Check API hash value - Found myself
+            false, // **DROPPED** Google Fact Check API hash value
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
-            true, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
-            false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            true, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
             false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
@@ -405,7 +405,7 @@ public class Controller {
                     for (int j=0; j<this.tournament_size; j++) {
                         int indx = (int) (Math.random()*this.antibodies.size());
 
-                        while (selected_for_tournament.contains(indx)) {
+                        while ((selected_for_tournament.contains(indx) || (abs_selected_for_reproduction.contains(indx)))) {
                             indx = (int) (Math.random()*this.antibodies.size());
                         }
                         tournament.put(indx, this.antibodies.get(indx).fitness);
@@ -741,7 +741,7 @@ public class Controller {
         double[] vector = {0.35, 0.35, 0.68, 0.44, 0.33};
         System.out.println("Old list: " + Arrays.toString(vector));
 
-        Mutate mutate = new Mutate();
+        /*Mutate mutate = new Mutate();
         double[] vector2 = mutate.mutateVector(vector, 0.6);
         System.out.println("New list: " + Arrays.toString(vector2));
 
@@ -759,7 +759,7 @@ public class Controller {
 
         System.out.println("Old value: " + 0.5);
         double val = mutate.mutateScalar(0.5, 0.6);
-        System.out.println("New value: " + val);
+        System.out.println("New value: " + val);*/
     }
 
     public void TestHasher() {
