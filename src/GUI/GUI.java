@@ -190,8 +190,13 @@ public class GUI extends Application {
 
         final XYChart.Series<Number, Number> series = new XYChart.Series<>();
 
+
         for (int i=1; i<this.controller.generations; i++) {
-            series.getData().add(new XYChart.Data<Number, Number>(i, this.controller.final_generation_accuracies[i-1]));
+            double avg = 0;
+            for (int k=0; k<this.controller.k; k++) {
+                avg += this.controller.generation_accuracies[k][i-1];
+            }
+            series.getData().add(new XYChart.Data<Number, Number>(i, avg/this.controller.k));
         }
 
         graph.getData().add(series);

@@ -1,8 +1,5 @@
 package AIS;
 
-import Features.Normaliser;
-
-import java.util.Arrays;
 import java.util.Random;
 
 public class Mutate {
@@ -35,7 +32,7 @@ public class Mutate {
     double[] mutateVector(double[] feature_vector, double mutation_probability, boolean[] features_used) {
         // Mutates the input vector according to the probability
         // Note, the more elements in the vector (feature list), the less the vector probability should be
-        Random rand = new Random(System.currentTimeMillis());
+        Random rand = new Random();
 
         int i=0;
 
@@ -62,7 +59,7 @@ public class Mutate {
 
     double mutateScalar(double value, double mutation_probability) {
         // Mutates a single value, made for mutating the RR radius
-        Random rand = new Random(System.currentTimeMillis());
+        Random rand = new Random();
         double randomValue = rand.nextDouble(); //0.0 to 0.99
 
         if (randomValue <= mutation_probability) {
@@ -72,8 +69,8 @@ public class Mutate {
             //else value = value + number;
 
             double coeff = range_min + (range_max - range_min) * rand.nextDouble();
-            if (value*coeff > 1.0) value = 1.0;
-            else value = Math.max(value * coeff, 0.001);
+
+            return value*coeff;
         }
 
         return value;

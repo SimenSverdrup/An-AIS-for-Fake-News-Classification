@@ -35,7 +35,7 @@ public class Antibody {
         this.feature_list = antigen.feature_list.clone();
         this.true_class = antigen.true_class;
 
-        Random rand = new Random(System.currentTimeMillis());
+        Random rand = new Random();
         this.id = String.valueOf((int) Math.floor(rand.nextInt(1000000)));
 
         this.connected_antigens = new ArrayList<>();
@@ -137,7 +137,7 @@ public class Antibody {
                 ag_idx++;
             }
 
-            this.weighted_accuracy = (2 + this.correct_AG_interactions)/(this.number_of_classes + total_affinities);  // Apply Laplacian smoothing, from VALIS (or not) - ser ut som du får bedre resultater uten
+            this.weighted_accuracy = (1.5 + this.correct_AG_interactions)/(this.number_of_classes + total_affinities);  // Apply Laplacian smoothing, from VALIS (or not) - ser ut som du får bedre resultater uten
 
             this.fitness = ((sharing_factor*weighted_accuracy)/(total_affinities));
         }
@@ -176,10 +176,13 @@ public class Antibody {
         this.id = String.valueOf((int) (Math.random()*10000));
     }
 
-    public void mutate(double vector_mutation_prob, double scalar_mutation_prob) {
-        Random rand = new Random(System.currentTimeMillis());
-        Mutate mut = new Mutate();
+    public void setNewID() {
+        Random rand = new Random();
         this.id = String.valueOf((int) Math.floor(rand.nextInt(1000000)));
+    }
+
+    public void mutate(double vector_mutation_prob, double scalar_mutation_prob) {
+        Mutate mut = new Mutate();
         float features_used_probability = 1/ (float) (1+this.feature_list.length);
 
         double previous_RR = this.RR_radius;
