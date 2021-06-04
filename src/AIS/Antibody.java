@@ -132,7 +132,7 @@ public class Antibody {
                 }
 
                 AB_interactions = this.affinities.get(ag_idx);
-                sharing_factor += Math.pow(AB_interactions, 2)/(ag_affinities); //part of the antigen that belongs to the antibody
+                sharing_factor += Math.pow(AB_interactions, 2)/(ag_affinities); //part of the antigens that belongs to the antibody
 
                 ag_idx++;
             }
@@ -183,7 +183,7 @@ public class Antibody {
 
     public void mutate(double vector_mutation_prob, double scalar_mutation_prob) {
         Mutate mut = new Mutate();
-        float features_used_probability = 1/ (float) (1+this.feature_list.length);
+        float features_used_probability = 1/ (float) (2 * this.feature_list.length);
 
         double previous_RR = this.RR_radius;
         double[] previous_feature_list = this.feature_list.clone();

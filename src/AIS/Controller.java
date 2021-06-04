@@ -31,27 +31,27 @@ public class Controller {
 
     public final int k = 4;   // k-fold cross validation split
     public final double antibody_ratio = 1.0;
-    public final double max_antibody_replacement_ratio = 0.2;
-    public final int number_of_clones = 6; // number of clones per antibody
+    public final double max_antibody_replacement_ratio = 0.1;
+    public final int number_of_clones = 10; // number of clones per antibody
     public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
     public double feature_vector_mutation_probability;
     public double RR_radius_mutation_probability;
     public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
     public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 200;
+    public final int generations = 100;
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
-    public final boolean plot_testing_set = false; // false for plotting training set instead (plotting testing set is much more computationally extensive)
+    public final boolean plot_testing_set = true; // false for plotting training set instead (plotting testing set is much more computationally extensive)
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public final Dataset dataset = FAKENEWSNET; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = false;
-    public final int max_lines = 1000;
+    public final int max_lines = 1200;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
             true, // Word count - Newman et al. (2003)
-            false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
             true, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
             false, // 1st person singular (I) - "Truth of varying shades" (Rashkin et al.)
@@ -59,24 +59,24 @@ public class Controller {
             false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
             false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
             false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
-            false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            false, // Negations - "Behind the cues" (made myself)
+            true, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            true, // Negations - "Behind the cues" (made myself)
             false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
             false, // Strongly subjective words - (MPQA)
-            false, // Quotation marks TF (found from manual review of the articles)
+            true, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            false, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            true, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
             false, // **DROPPED** Google Fact Check API hash value
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
-            true, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
+            false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
 
     public void run() throws Exception {
@@ -128,8 +128,8 @@ public class Controller {
             }
         }
 
-        this.feature_vector_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
-        this.RR_radius_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
+        this.feature_vector_mutation_probability = 1.0/ (double) (this.number_of_features);
+        this.RR_radius_mutation_probability = 1.0/ (double) (this.number_of_features);
         int number_of_records = list.size();
         this.antigens = new Antigen[number_of_records];
         this.training_antigens = new ArrayList<>();
@@ -292,6 +292,8 @@ public class Controller {
                 }
             }
 
+            System.out.println("Finished initializing antibodies");
+
             ArrayList<Antibody> clones = new ArrayList<>();
             List<Antibody> abs_to_be_deleted = new ArrayList<>();
             this.tournament_size = this.antibodies.size()/10;
@@ -311,16 +313,16 @@ public class Controller {
                     ag.findConnectedAntibodies(this.antibodies);
                 }
 
-                System.out.println("\n\n---------------------------------------------------------------------------------------\nAntibodies:");
+                //System.out.println("\n\n---------------------------------------------------------------------------------------\nAntibodies:");
                 for (Antibody ab : this.antibodies) {
                     ab.findConnectedAntigens(this.training_antigens);
                     ab.calculateFitness(this.training_antigens);
-                    System.out.println("\nid: " + ab.id);
+                    /*System.out.println("\nid: " + ab.id);
                     System.out.println("Features used: " + Arrays.toString(ab.features_used));
                     System.out.println("Feature list: " + Arrays.toString(ab.feature_list));
                     System.out.println("RR radius: " + ab.RR_radius);
                     System.out.println("Fitness: " + ab.fitness);
-                    System.out.println("Connected to: " + ab.connected_antigens.size());
+                    System.out.println("Connected to: " + ab.connected_antigens.size());*/
                 }
 
                 //HashMap<Integer, Double> fitnesses = new HashMap<>();
@@ -621,7 +623,7 @@ public class Controller {
                 /////////////////
             }
 
-
+            int counter = 0;
             for (int ab_idx=0; ab_idx<this.antibodies.size(); ab_idx++) {
                 // remove abs with fitness lower than threshold
                 this.antibodies.get(ab_idx).findConnectedAntigens(this.training_antigens);
@@ -630,9 +632,10 @@ public class Controller {
 
                 if (this.antibodies.get(ab_idx).fitness < this.antibody_removal_threshold) {
                     this.antibodies.remove(this.antibodies.get(ab_idx));
-                    System.out.println("REMOVE");
+                    counter++;
                 }
             }
+            System.out.println("Removed " + counter + " antibodies due to low fitnesses");
 
             //-----------------Calculate accuracy, on testing set------------------
             this.testing_antigens.clear();

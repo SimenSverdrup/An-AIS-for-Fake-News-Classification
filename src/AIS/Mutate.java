@@ -50,6 +50,7 @@ public class Mutate {
                     if (value * coeff > 1.0) feature_vector[i] = 1.0;
                     else feature_vector[i] = Math.max(value * coeff, 0.0);
                 }
+                if (value < 0.001) feature_vector[i]  = 0.01;
             }
             i++;
         }
@@ -72,6 +73,8 @@ public class Mutate {
 
             return value*coeff;
         }
+
+        if (value < 0.001) value = 0.01;
 
         return value;
     }

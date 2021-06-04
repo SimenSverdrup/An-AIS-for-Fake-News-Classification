@@ -450,7 +450,7 @@ public class FeatureExtractor {
                 String[] text = {ag.sentence_split_text.get(ag.sentence_count - 1)};
 
                 int counter = 1;
-                while (text[0].length() < 2) {
+                while ((text[0].length() < 2) && (counter <= ag.sentence_count)) {
                     text[0] = ag.sentence_split_text.get(ag.sentence_count - counter);
                     counter++;
                 }
