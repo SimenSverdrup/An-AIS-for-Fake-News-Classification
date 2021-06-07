@@ -36,34 +36,34 @@ public class Controller {
     public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
     public double feature_vector_mutation_probability;
     public double RR_radius_mutation_probability;
-    public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
+    public final double antigen_initialised_ratio = 0.5;
+    public final double randomly_initialised_ratio = 0.5;
     public final int generations = 100;
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = true; // false for plotting training set instead (plotting testing set is much more computationally extensive)
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = FAKENEWSNET; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public final Dataset dataset = IRIS; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
     public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = false;
-    public final int max_lines = 1200;
+    public final int max_lines = 800;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
-            true, // Word count - Newman et al. (2003)
-            true, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            false, // Word count - Newman et al. (2003)
+            false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
-            true, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
+            false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
             false, // 1st person singular (I) - "Truth of varying shades" (Rashkin et al.)
             false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
-            false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
+            true, // Superlatives - "Truth of varying shades" (Rashkin et al.)
             false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
             false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
             true, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             true, // Negations - "Behind the cues" (made myself)
             false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            false, // Strongly subjective words - (MPQA)
+            true, // Strongly subjective words - (MPQA)
             true, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
@@ -74,7 +74,7 @@ public class Controller {
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for HEAD (first sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
-            false, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
+            true, // BERT for word embeddings for TAIL (last sentence) - see NLP processing in State of the art for inspiration (Fakeddit)
             false, // Sentiment Analysis of headline with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
             false, // Sentiment Analysis of head and tail of article text with Stanford CoreNLP - Scores from 0-4 based on resulting in: Very Negative, Negative, Neutral, Positive or Very Positive, respectively
     };
@@ -194,6 +194,7 @@ public class Controller {
                 System.out.println("Finished extracting features");
             }
 
+            double last_testing_set_accuracy = 0;
             //for (Antigen ag : this.training_antigens) {
                 //System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
                 //System.out.println("Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
@@ -208,24 +209,6 @@ public class Controller {
             mi.calculateTextEmbeddingMI(this.training_antigens);
             mi.calculateSingleFeatureMI(this.training_antigens, this.number_of_features);
             System.out.println("------------------");*/
-
-            /*int fakeLength = 0;
-            int realLength = 0;
-            int realCount = 0;
-            int fakeCount = 0;
-            for (Antigen ag : this.training_antigens) {
-                if (ag.true_class.equals("real")) {
-                    realLength += ag.feature_list[0];
-                    realCount++;
-                }
-                else {
-                    fakeLength += ag.feature_list[0];
-                    fakeCount++;
-                }
-            }
-            System.out.println("avg REAL length: " + (realLength/realCount));
-            System.out.println("avg FAKE length: " + (fakeLength/fakeCount));*/
-
 
             this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
             System.out.println("Finished normalizing features");
@@ -601,6 +584,7 @@ public class Controller {
 
                     //this.accuracies[k] = correct_predictions / this.testing_antigens.size();
                     this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
+                    last_testing_set_accuracy = this.generation_accuracies[k][generation-1];
                 }
                 else {
                     //this.testing_antigens.clear();
@@ -638,39 +622,45 @@ public class Controller {
             System.out.println("Removed " + counter + " antibodies due to low fitnesses");
 
             //-----------------Calculate accuracy, on testing set------------------
-            this.testing_antigens.clear();
-            this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
-
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
-                this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+            if (this.plot_testing_set) {
+                // save time by not extracting features over again
+                this.accuracies[k] = last_testing_set_accuracy;
             }
+            else {
+                this.testing_antigens.clear();
+                this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
-
-            double correct_predictions = 0;
-
-            for (Antigen ag : this.testing_antigens) {
-                ag.findConnectedAntibodies(this.antibodies);
-                ag.predictClass(this.antibodies);
-
-                if (ag.connected_antibodies.size() == 0) {
-                    System.out.println("No connected abs to this ag!");
+                if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
+                    this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                 }
 
-                /*System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
-                System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
-                System.out.println("Ag class: " + ag.true_class);
-                System.out.println("Ag predicted class: " + ag.predicted_class);
-                System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
-                System.out.println("\n");*/
+                this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
 
+                double correct_predictions = 0;
 
-                if (ag.true_class.equals(ag.predicted_class)) {
-                    correct_predictions++;
+                for (Antigen ag : this.testing_antigens) {
+                    ag.findConnectedAntibodies(this.antibodies);
+                    ag.predictClass(this.antibodies);
+
+                    if (ag.connected_antibodies.size() == 0) {
+                        System.out.println("No connected abs to this ag!");
+                    }
+
+                    /*System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
+                    System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
+                    System.out.println("Ag class: " + ag.true_class);
+                    System.out.println("Ag predicted class: " + ag.predicted_class);
+                    System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
+                    System.out.println("\n");*/
+
+                    if (ag.true_class.equals(ag.predicted_class)) {
+                        correct_predictions++;
+                    }
                 }
+
+                this.accuracies[k] = correct_predictions / this.testing_antigens.size();
             }
 
-            this.accuracies[k] = correct_predictions / this.testing_antigens.size();
 
             System.out.println("\n--------------------------------------");
             System.out.println("Accuracy for testing set k=" + k + ": " + this.accuracies[k]);
