@@ -1,6 +1,6 @@
 # An Artificial Immune System for Fake News Classification
 
-Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
+Simen Sverdrup-Thygeson, Master's thesis in Computer Science, Norwegian University of Science and Technology 2020/2021
 
 
 ## Prerequisites:
@@ -22,13 +22,12 @@ Simen Sverdrup-Thygeson, Master thesis in Computer Science, NTNU 2020/2021
 * flask + flask-compress + flask-cors + flask-json (see https://bert-as-service.readthedocs.io/en/latest/tutorial/http-server.html)
 
 ### Datasets (not included in repo due to large sizes):
+* Kaggle dataset (https://www.kaggle.com/c/fake-news/overview)
 * LIAR dataset
 * FakeNewsNet dataset
 * BERT Cased Base pre-trained model
 
-
-
 ## Running the Model
-* Navigate to project directory and run (full path to BERT model needed) in Anaconda prompt terminal:
+* Navigate to project directory and run (full path to BERT model needed) in Anaconda terminal:
 bert-serving-start -pooling_strategy=REDUCE_MEAN -model_dir=C:\Users\simen\Documents\A_Studier\Masteroppgave\Kode\Masteropg\cased_L-12_H-768_A-12 -http_port 8125
 * Simply run main.java
