@@ -29,5 +29,5 @@ Simen Sverdrup-Thygeson, Master's thesis in Computer Science, Norwegian Universi
 
 ## Running the Model
 * Navigate to project directory and run (full path to BERT model needed) in Anaconda terminal:
-bert-serving-start -pooling_strategy=REDUCE_MEAN -model_dir=C:\Users\simen\Documents\A_Studier\Masteroppgave\Kode\Masteropg\cased_L-12_H-768_A-12 -http_port 8125
+bert-serving-start -pooling_strategy=REDUCE_MEAN -model_dir=*MODEL PATH* -http_port 8125
 * Simply run main.java
