@@ -21,10 +21,19 @@ public class Affinity {
 
     public double CalculateAffinity(double[] antigen_features, double[] antibody_features, double RR_radius, boolean[] features_used) {
         // Calculates affinity between antigen and antibody
+        boolean uses_features = false;
+        for (boolean bol : features_used) {
+            if (bol) {
+                uses_features = true;
+                break;
+            }
+        }
+
+        if (!uses_features) return 0; // zero affinity if antibody don't use any features
 
         double euclidean_distance = CalculateDistance(antigen_features, antibody_features, features_used);
         if (euclidean_distance > RR_radius) return 0; // outside RR
-        else if (euclidean_distance == 0) return 1; // ag exactly at ab coordinates
+        //else if (euclidean_distance == 0) return 1; // ag exactly at ab coordinates
         else return 1 - euclidean_distance/RR_radius; // Affinity => 1 when euclidean distance very small, affinity => 0 when euclidean distance is barely within RR
     }
 }

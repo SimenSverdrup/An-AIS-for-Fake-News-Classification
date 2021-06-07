@@ -5,6 +5,8 @@ import Dataset.Parser;
 import Features.FeatureExtractor;
 import Features.Hasher;
 import Features.Normaliser;
+import Testing.FeatureScoring;
+import Testing.MutualInfo;
 
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
@@ -27,24 +29,24 @@ public class Controller {
     public ArrayList<Antibody> worst_performing_abs;
     public int tournament_size;
 
-    public final int k = 5;   // k-fold cross validation split
+    public final int k = 4;   // k-fold cross validation split
     public final double antibody_ratio = 1.0;
     public final double max_antibody_replacement_ratio = 0.1;
     public final int number_of_clones = 10; // number of clones per antibody
     public final double antibody_replacement_decrease_factor = 1.5; // skriver at denne er statisk lik 1.5 i overleafen
     public double feature_vector_mutation_probability;
     public double RR_radius_mutation_probability;
-    public final double antigen_initialised_ratio = 0.5; // ratio of antibodies initialised with antigen feature vectors
-    public final double randomly_initialised_ratio = 0.5; // ratio of antibodies initialised with random feature vectors
-    public final int generations = 300; //TODO note
+    public final double antigen_initialised_ratio = 0.5;
+    public final double randomly_initialised_ratio = 0.5;
+    public final int generations = 100;
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
-    public final boolean plot_testing_set = false; // false for plotting training set instead (plotting testing set is much more computationally extensive)
+    public final boolean plot_testing_set = true; // false for plotting training set instead (plotting testing set is much more computationally extensive)
     public final boolean VALIS_RR_radius_init_scheme = true;
-    public final Dataset dataset = KAGGLE; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
-    public int number_of_features = 8; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
+    public final Dataset dataset = IRIS; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
+    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
     public final boolean binary_class_LIAR = false;
-    public final int max_lines = 1000;
+    public final int max_lines = 800;
 
     private final boolean[] features_used = {
             // TF features are weighted double if found in the headline (headline weighting inspired by 3HAN)
@@ -52,22 +54,22 @@ public class Controller {
             false, // 2nd person TF - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
             false, // Modal adverbs - "Truth of varying shades" (Rashkin et al.)
             false, // Action adverbs - "Truth of varying shades" (Rashkin et al.)
-            false, // 1st pers singular (I) - "Truth of varying shades" (Rashkin et al.)
+            false, // 1st person singular (I) - "Truth of varying shades" (Rashkin et al.)
             false, // Manner adverbs  - "Truth of varying shades" (Rashkin et al.)
-            false, // Superlatives - "Truth of varying shades" (Rashkin et al.)
+            true, // Superlatives - "Truth of varying shades" (Rashkin et al.)
             false, // Comparative forms - "Truth of varying shades" (Rashkin et al.)
             false, // Swear words - "Truth of varying shades" (Rashkin et al.) + Bad words TF - https://www.cs.cmu.edu/~biglou/resources/
-            false, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
-            false, // Negations - "Behind the cues" (made myself)
+            true, // Numbers - "Truth of varying shades" (Rashkin et al.) + \citep{FakeNewsRumors}
+            true, // Negations - "Behind the cues" (made myself)
             false, // Negative opinion words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch-Kincaid Grade level - "Behind the cues" (Gravanis et al.)
-            false, // Strongly subjective words - (MPQA)
-            false, // Quotation marks TF (found from manual review of the articles)
+            true, // Strongly subjective words - (MPQA)
+            true, // Quotation marks TF (found from manual review of the articles)
             false, // Exclamation + question marks TF (\citep{FakeNewsRumors})
             false, // Positive words - "Behind the cues" (Gravanis et al.) + lexicon from "Mining and Summarizing Customer Reviews." (Minqing Hu and Bing Liu)
             false, // Flesch Reading Ease - \citep{linguistic-feature-based}
             false, // **DROPPED** Unreliable sources, in speaker field (binary, not TF) - "Behind the cues" (Gravanis et al.) + made lexicon based on findings of Gravanis et al. (facebook posts, bloggers etc.)
-            false, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
+            true, //Divisive topics - "Behind the cues" (Gravanis et al.) + made lexicon myself based on findings of Gravanis et ag.
             false, // **DROPPED** Google Fact Check API hash value
             false, // BERT for word embeddings for HEADLINE ONLY - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
             false, // BERT for word embeddings for FULL TEXT (first and last sentence) - see NLP processing in State of the art for inspiration (Fakeddit) (https://zenodo.org/record/2652964#.YJE2wbUzY2w)
@@ -78,12 +80,25 @@ public class Controller {
     };
 
     public void run() throws Exception {
-        Parser parser = new Parser(this.dataset, this.max_lines + 1, this.binary_class_LIAR); // + 1 because first line are headers only
 
-        List<List<String>> list = parser.getData();
+        List<List<String>> list;
 
         if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR) || this.dataset.equals(KAGGLE)) {
-            list.remove(0); // remove headers
+            Parser parser1 = new Parser(this.dataset, 25000, this.binary_class_LIAR);
+            List<List<String>> list1 = parser1.getData();
+
+            list1.remove(0); // remove headers
+            Collections.shuffle(list1);
+            list = list1.subList(0, max_lines);
+        }
+        else {
+            Parser parser = new Parser(this.dataset, this.max_lines + 1, this.binary_class_LIAR); // + 1 because first line are headers only
+            list = parser.getData();
+        }
+
+
+
+        if (this.dataset.equals(FAKENEWSNET) || this.dataset.equals(LIAR) || this.dataset.equals(KAGGLE)) {
             this.number_of_features = 0;
 
             for (boolean b : features_used) {
@@ -113,8 +128,8 @@ public class Controller {
             }
         }
 
-        this.feature_vector_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
-        this.RR_radius_mutation_probability = 1.0/ (double) (1 + this.number_of_features);
+        this.feature_vector_mutation_probability = 1.0/ (double) (this.number_of_features);
+        this.RR_radius_mutation_probability = 1.0/ (double) (this.number_of_features);
         int number_of_records = list.size();
         this.antigens = new Antigen[number_of_records];
         this.training_antigens = new ArrayList<>();
@@ -157,6 +172,7 @@ public class Controller {
         }
 
         this.accuracies = new double[k];
+        int previous_k = -1;
 
         for (int k = 0; k < this.k; k++) {
             // k marks the index of the Antigen vector used for testing (this round)
@@ -178,6 +194,7 @@ public class Controller {
                 System.out.println("Finished extracting features");
             }
 
+            double last_testing_set_accuracy = 0;
             //for (Antigen ag : this.training_antigens) {
                 //System.out.println("\nClass: " + ag.true_class + "    Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
                 //System.out.println("Non-normalized feature vector: " + Arrays.toString(ag.feature_list));
@@ -185,14 +202,6 @@ public class Controller {
                 //System.out.println("Headline: " + ag.headline);
             //}
 
-            this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
-            System.out.println("Finished normalizing features");
-
-
-            // Calculate feature scoring
-            /*FeatureScoring fs = new FeatureScoring(this.dataset, this.number_of_features);
-            fs.outputDataset(this.training_antigens);
-            fs.getFeatureScores();*/
 
             // Calculate mutual information (MI)
             /*System.out.println("\n------------------\nStarting MI");
@@ -201,6 +210,13 @@ public class Controller {
             mi.calculateSingleFeatureMI(this.training_antigens, this.number_of_features);
             System.out.println("------------------");*/
 
+            this.training_antigens = norm.NormaliseFeatures(this.training_antigens, this.negative_vals);
+            System.out.println("Finished normalizing features");
+
+            // Calculate feature scoring
+            /*FeatureScoring fs = new FeatureScoring(this.dataset, this.number_of_features);
+            fs.outputDataset(this.training_antigens);
+            fs.getFeatureScores();*/
 
             this.antibodies.clear();
             List<Antigen> antigens_added = new ArrayList<>();
@@ -259,6 +275,8 @@ public class Controller {
                 }
             }
 
+            System.out.println("Finished initializing antibodies");
+
             ArrayList<Antibody> clones = new ArrayList<>();
             List<Antibody> abs_to_be_deleted = new ArrayList<>();
             this.tournament_size = this.antibodies.size()/10;
@@ -278,10 +296,16 @@ public class Controller {
                     ag.findConnectedAntibodies(this.antibodies);
                 }
 
+                //System.out.println("\n\n---------------------------------------------------------------------------------------\nAntibodies:");
                 for (Antibody ab : this.antibodies) {
                     ab.findConnectedAntigens(this.training_antigens);
                     ab.calculateFitness(this.training_antigens);
-                    //System.out.println("\nFeatures used by this ab: " + Arrays.toString(ab.features_used));
+                    /*System.out.println("\nid: " + ab.id);
+                    System.out.println("Features used: " + Arrays.toString(ab.features_used));
+                    System.out.println("Feature list: " + Arrays.toString(ab.feature_list));
+                    System.out.println("RR radius: " + ab.RR_radius);
+                    System.out.println("Fitness: " + ab.fitness);
+                    System.out.println("Connected to: " + ab.connected_antigens.size());*/
                 }
 
                 //HashMap<Integer, Double> fitnesses = new HashMap<>();
@@ -412,6 +436,7 @@ public class Controller {
                         selected_for_tournament.add(indx);
                     }
 
+
                     int max_key = Collections.max(tournament.entrySet(), Map.Entry.comparingByValue()).getKey();
                     while ((abs_selected_for_reproduction.contains(max_key)) && (tournament.size() > 1)) {
                         tournament.remove(max_key);
@@ -471,7 +496,28 @@ public class Controller {
                     clone_index++;
                 }
 
-                List<Antibody> clones_to_be_deleted = new ArrayList<>();
+                List<Antibody> clones_to_be_added = new ArrayList<>();
+                List<String> ids_added = new ArrayList<>();
+                int max_key;
+
+                for (Antibody ab : abs_to_be_deleted) {
+                    if (fitnesses.isEmpty()) break;
+
+                    max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
+
+                    while (ids_added.contains(clones.get(max_key).id)) {
+                        fitnesses.remove(max_key);
+                        if (fitnesses.isEmpty()) break;
+                        max_key = Collections.max(fitnesses.entrySet(), Map.Entry.comparingByValue()).getKey();
+                    }
+
+                    if (!fitnesses.isEmpty()) fitnesses.remove(max_key);
+                    ids_added.add(clones.get(max_key).id);
+
+                    clones_to_be_added.add(clones.get(max_key));
+                }
+
+                /*List<Antibody> clones_to_be_deleted = new ArrayList<>();
                 int clone_size = clones.size();
 
                 while (clone_size > abs_to_be_deleted.size()) {
@@ -485,43 +531,35 @@ public class Controller {
 
                 for (Antibody clone : clones_to_be_deleted) {
                     clones.remove(clone);
+                }*/
+
+                //System.out.println("\n---------------------\nNew clones: ");
+                for (Antibody clone : clones_to_be_added) {
+                    clone.setNewID();
+                    /*System.out.println("\nid: " + clone.id);
+                    System.out.println("Features used: " + Arrays.toString(clone.features_used));
+                    System.out.println("Feature list: " + Arrays.toString(clone.feature_list));
+                    System.out.println("Fitness: " + clone.fitness);
+                    System.out.println("Connected to: " + clone.connected_antigens.size());*/
                 }
 
+
                 // Add the new clones
-                this.antibodies.addAll(clones);
-
-
+                this.antibodies.addAll(clones_to_be_added);
 
                 ///////////////// Calculate accuracy for plotting:
                 if (this.plot_testing_set) {
-                    this.testing_antigens.clear();
-                    this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+                    if (k != previous_k)  {
+                        this.testing_antigens.clear();
+                        this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-                    if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
-                        this.testing_antigens = fe.extractFeatures(this.testing_antigens);
-                    }
-
-                    this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
-
-                    double correct_predictions = 0;
-
-                    for (Antigen ag : this.testing_antigens) {
-                        ag.findConnectedAntibodies(this.antibodies);
-                        ag.predictClass(this.antibodies);
-
-
-                        if (ag.true_class.equals(ag.predicted_class)) {
-                            correct_predictions++;
+                        if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
+                            this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                         }
-                    }
 
-                    //this.accuracies[k] = correct_predictions / this.testing_antigens.size();
-                    this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
-                }
-                else {
-                    //this.testing_antigens.clear();
-                    //this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
-                    //this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+                        this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
+                        previous_k = k;
+                    }
 
                     ArrayList<Antibody> antibodies_temp = new ArrayList<>();
 
@@ -535,9 +573,29 @@ public class Controller {
 
                     double correct_predictions = 0;
 
-                    for (Antigen ag : this.training_antigens) {
+                    for (Antigen ag : this.testing_antigens) {
                         ag.findConnectedAntibodies(antibodies_temp);
                         ag.predictClass(antibodies_temp);
+
+                        if (ag.true_class.equals(ag.predicted_class)) {
+                            correct_predictions++;
+                        }
+                    }
+
+                    //this.accuracies[k] = correct_predictions / this.testing_antigens.size();
+                    this.generation_accuracies[k][generation-1] = correct_predictions / this.testing_antigens.size();
+                    last_testing_set_accuracy = this.generation_accuracies[k][generation-1];
+                }
+                else {
+                    //this.testing_antigens.clear();
+                    //this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
+                    //this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens);
+
+                    double correct_predictions = 0;
+
+                    for (Antigen ag : this.training_antigens) {
+                        ag.findConnectedAntibodies(this.antibodies);
+                        ag.predictClass(this.antibodies);
 
                         if (ag.true_class.equals(ag.predicted_class)) {
                             correct_predictions++;
@@ -549,7 +607,7 @@ public class Controller {
                 /////////////////
             }
 
-
+            int counter = 0;
             for (int ab_idx=0; ab_idx<this.antibodies.size(); ab_idx++) {
                 // remove abs with fitness lower than threshold
                 this.antibodies.get(ab_idx).findConnectedAntigens(this.training_antigens);
@@ -558,44 +616,51 @@ public class Controller {
 
                 if (this.antibodies.get(ab_idx).fitness < this.antibody_removal_threshold) {
                     this.antibodies.remove(this.antibodies.get(ab_idx));
-                    System.out.println("REMOVE");
+                    counter++;
                 }
             }
+            System.out.println("Removed " + counter + " antibodies due to low fitnesses");
 
             //-----------------Calculate accuracy, on testing set------------------
-            this.testing_antigens.clear();
-            this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
-
-            if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
-                this.testing_antigens = fe.extractFeatures(this.testing_antigens);
+            if (this.plot_testing_set) {
+                // save time by not extracting features over again
+                this.accuracies[k] = last_testing_set_accuracy;
             }
+            else {
+                this.testing_antigens.clear();
+                this.testing_antigens.addAll(Arrays.asList(this.antigens_split[k]));
 
-            this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
-
-            double correct_predictions = 0;
-
-            for (Antigen ag : this.testing_antigens) {
-                ag.findConnectedAntibodies(this.antibodies);
-                ag.predictClass(this.antibodies);
-
-                if (ag.connected_antibodies.size() == 0) {
-                    System.out.println("No connected abs to this ag!");
+                if ((this.dataset == FAKENEWSNET) || (this.dataset == LIAR) || (this.dataset == KAGGLE)) {
+                    this.testing_antigens = fe.extractFeatures(this.testing_antigens);
                 }
 
-                /*System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
-                System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
-                System.out.println("Ag class: " + ag.true_class);
-                System.out.println("Ag predicted class: " + ag.predicted_class);
-                System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
-                System.out.println("\n");*/
+                this.testing_antigens = norm.NormaliseFeatures(this.testing_antigens, this.negative_vals);
 
+                double correct_predictions = 0;
 
-                if (ag.true_class.equals(ag.predicted_class)) {
-                    correct_predictions++;
+                for (Antigen ag : this.testing_antigens) {
+                    ag.findConnectedAntibodies(this.antibodies);
+                    ag.predictClass(this.antibodies);
+
+                    if (ag.connected_antibodies.size() == 0) {
+                        System.out.println("No connected abs to this ag!");
+                    }
+
+                    /*System.out.println("Connected abs to this ag: " + ag.connected_antibodies.size());
+                    System.out.println("Ag feature list: " + Arrays.toString(ag.feature_list));
+                    System.out.println("Ag class: " + ag.true_class);
+                    System.out.println("Ag predicted class: " + ag.predicted_class);
+                    System.out.println("Ag class vote: " + Arrays.toString(ag.class_vote));
+                    System.out.println("\n");*/
+
+                    if (ag.true_class.equals(ag.predicted_class)) {
+                        correct_predictions++;
+                    }
                 }
+
+                this.accuracies[k] = correct_predictions / this.testing_antigens.size();
             }
 
-            this.accuracies[k] = correct_predictions / this.testing_antigens.size();
 
             System.out.println("\n--------------------------------------");
             System.out.println("Accuracy for testing set k=" + k + ": " + this.accuracies[k]);

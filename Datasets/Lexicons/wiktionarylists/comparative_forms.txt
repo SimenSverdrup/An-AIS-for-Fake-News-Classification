@@ -2116,5 +2116,3 @@ pouffier
 spazzier
 welcomer
 dourer
-fewer_and_farther_between
-fewer_and_further_between

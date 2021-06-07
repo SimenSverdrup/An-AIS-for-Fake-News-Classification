@@ -183,15 +183,20 @@ public class GUI extends Application {
 
         ///// Accuracy plot //////
         NumberAxis xAxis = new NumberAxis("Generation", 1, this.controller.generations, 1);
-        NumberAxis yAxis = new NumberAxis("Accuracy", 0.0, 1.0, 0.01);
+        NumberAxis yAxis = new NumberAxis("Accuracy", 0.5, 1.0, 0.01);
 
         LineChart<Number, Number> graph = new LineChart<>(xAxis, yAxis);
         graph.setTitle("Accuracy per generation");
 
         final XYChart.Series<Number, Number> series = new XYChart.Series<>();
 
+
         for (int i=1; i<this.controller.generations; i++) {
-            series.getData().add(new XYChart.Data<Number, Number>(i, this.controller.final_generation_accuracies[i-1]));
+            double avg = 0;
+            for (int k=0; k<this.controller.k; k++) {
+                avg += this.controller.generation_accuracies[k][i-1];
+            }
+            series.getData().add(new XYChart.Data<Number, Number>(i, avg/this.controller.k));
         }
 
         graph.getData().add(series);

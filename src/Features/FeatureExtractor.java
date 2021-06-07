@@ -450,7 +450,7 @@ public class FeatureExtractor {
                 String[] text = {ag.sentence_split_text.get(ag.sentence_count - 1)};
 
                 int counter = 1;
-                while (text[0].length() < 2) {
+                while ((text[0].length() < 2) && (counter <= ag.sentence_count)) {
                     text[0] = ag.sentence_split_text.get(ag.sentence_count - counter);
                     counter++;
                 }
@@ -636,7 +636,7 @@ public class FeatureExtractor {
     }
 
     public ArrayList<Antigen> exclamationAndQuestionMarks(ArrayList<Antigen> antigens, int index) {
-        // Finds occurrences of quotation marks
+        // Finds occurrences of exclamation and question marks
 
         int matches = 0;
         String[] tokens = {"!", "?", "!!", "!?", "?!", "??", "!!!", "???"};
@@ -691,7 +691,11 @@ public class FeatureExtractor {
         // Finds occurrences of unreliable sources in speaker field
 
         int matches = 0;
-        String[] divisive_topics = {"vaccine", "vaccines", "vaccinated", "syria", "truth", "freedom", "trump", "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy", "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion", "muslim", "islam", "gender"};
+        String[] divisive_topics = {"vaccine", "vaccines", "vaccinated", "syria", "truth", "freedom", "trump",
+                "liberals", "immigrant", "immigrants", "transgender", "marijuana", "weed", "drugs", "supremacy",
+                "black", "white", "gay", "gun", "control", "climate", "capitalism", "privacy", "abortion", "religion",
+                "muslim", "islam", "gender", "brexit", "death", "penalty", "border", "security", "antifa", "alt-right",
+                "censorship", "censor", "censored", "coronavirus", "corona", "nationalism", "nationalist", "nationalists"};
 
         for (Antigen ag : antigens) {
             for (String word : ag.tokenized_text) {
