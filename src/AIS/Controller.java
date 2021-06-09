@@ -38,13 +38,13 @@ public class Controller {
     public double RR_radius_mutation_probability;
     public final double antigen_initialised_ratio = 0.5;
     public final double randomly_initialised_ratio = 0.5;
-    public final int generations = 100;
+    public final int generations = 200;
     public final double antibody_removal_threshold = 0.01; // the fitness value threshold for removing antibodies
 
     public final boolean plot_testing_set = true; // false for plotting training set instead (plotting testing set is much more computationally extensive)
-    public final boolean VALIS_RR_radius_init_scheme = true;
+    public final boolean VALIS_RR_radius_init_scheme = true; // true for VALIS, false for AISLFS RR radius initialisation scheme
     public final Dataset dataset = IRIS; //KAGGLE //FAKENEWSNET //LIAR //IRIS //SPIRALS //WINE //DIABETES (Pima Indian) //SONAR
-    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8, SONAR=60
+    public int number_of_features = 4; // IRIS=4, SPIRALS=2, WINE=13, DIABETES=8
     public final boolean binary_class_LIAR = false;
     public final int max_lines = 800;
 
